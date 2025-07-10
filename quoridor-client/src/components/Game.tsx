@@ -414,18 +414,35 @@ function Game() {
     });
 
     newSocket.on('gameStarted', (data: GameStartData) => {
-      console.log('🎮 게임 시작 데이터:', data);
+      console.log('🎮 게임 시작 데이터 상세:', {
+        전체데이터: data,
+        playerId: data.playerId,
+        playerInfo: data.playerInfo,
+        me정보: data.playerInfo?.me,
+        opponent정보: data.playerInfo?.opponent,
+        gameState: data.gameState
+      });
+      console.log('🎯 초기 턴 정보:', {
+        currentTurn: data.gameState.currentTurn,
+        myPlayerId: data.playerId,
+        isMyTurn: data.gameState.currentTurn === data.playerId
+      });
       setPlayerId(data.playerId);
       setGameState(data.gameState);
       setPlayerInfo(data.playerInfo);
-      console.log('플레이어 정보 설정됨:', {
-        playerId: data.playerId,
-        playerInfo: data.playerInfo
+      console.log('플레이어 정보 설정 완료:', {
+        설정된PlayerId: data.playerId,
+        설정된PlayerInfo: data.playerInfo
       });
       resetTimer();
     });
 
     newSocket.on('gameState', (newGameState: GameState) => {
+      console.log('🔄 게임 상태 업데이트:', {
+        currentTurn: newGameState.currentTurn,
+        myPlayerId: playerId,
+        isMyTurn: newGameState.currentTurn === playerId
+      });
       setGameState(newGameState);
       resetTimer();
     });
@@ -466,18 +483,31 @@ function Game() {
 
   const handleCellClick = (position: Position) => {
     if (socket && gameState.currentTurn === playerId && !winner && !isPaused) {
+      // Player2인 경우 좌표를 원래 게임 상태로 역변환
+      const actualPosition = playerId === 'player2' 
+        ? { x: 8 - position.x, y: 8 - position.y }
+        : position;
+        
       setConfirmAction({
         type: 'move',
-        data: position
+        data: actualPosition
       });
     }
   };
 
   const handleWallPlace = (position: Position, isHorizontal: boolean) => {
     if (socket && gameState.currentTurn === playerId && !winner && !isPaused) {
+      // Player2인 경우 벽 좌표를 원래 게임 상태로 역변환
+      const actualPosition = playerId === 'player2' 
+        ? { 
+            x: isHorizontal ? 7 - position.x : 8 - position.x, 
+            y: isHorizontal ? 8 - position.y : 7 - position.y 
+          }
+        : position;
+        
       setConfirmAction({
         type: 'wall',
-        data: { position, isHorizontal }
+        data: { position: actualPosition, isHorizontal }
       });
     }
   };
@@ -525,16 +555,44 @@ function Game() {
     setShowQuitDialog(true);
   };
 
-  // 게임 상태를 그대로 사용 (좌표 변환 없음)
+  // 게임 상태를 플레이어 관점으로 변환 (각자 하단에서 시작하도록)
   const getGameState = (): GameState => {
+    if (playerId === 'player2') {
+      // Player2인 경우 보드를 180도 회전하여 표시
+      const transformedState = {
+        ...gameState,
+        players: gameState.players.map(player => ({
+          ...player,
+          position: {
+            x: 8 - player.position.x,
+            y: 8 - player.position.y
+          }
+        })),
+        walls: gameState.walls.map(wall => ({
+          ...wall,
+          position: {
+            x: wall.isHorizontal ? 7 - wall.position.x : 8 - wall.position.x,
+            y: wall.isHorizontal ? 8 - wall.position.y : 7 - wall.position.y
+          }
+        }))
+      };
+      return transformedState;
+    }
     return gameState;
   };
 
   const renderPlayerCard = (player: any, position: 'top' | 'bottom', transformedState: GameState) => {
-    // 원본 gameState의 currentTurn과 비교해야 함
+    // 원본 gameState의 currentTurn과 비교해야 함 (변환된 상태가 아닌 원본 상태 사용)
     const isCurrentTurn = gameState.currentTurn === player.id;
     const isPlayer1 = player.id === 'player1';
     const isMe = player.id === playerId;
+    
+    console.log('플레이어 카드 렌더링:', {
+      playerId: player.id,
+      currentTurn: gameState.currentTurn,
+      isCurrentTurn,
+      myPlayerId: playerId
+    });
     
     const wallIcons = Array.from({ length: 10 }, (_, i) => (
       <WallIcon key={i} isActive={i < player.wallsLeft} />
@@ -542,16 +600,34 @@ function Game() {
 
     // 플레이어 이름 결정 로직 개선
     let playerName = '알 수 없음';
+    
+    console.log('🏷️ 플레이어 이름 결정:', {
+      playerId: player.id,
+      myPlayerId: playerId,
+      isMe,
+      playerInfo,
+      localStorage: localStorage.getItem('user')
+    });
+    
     if (isMe) {
       // 내 정보인 경우
       if (playerInfo?.me?.username) {
         playerName = playerInfo.me.username;
+        console.log('✅ playerInfo에서 내 이름 찾음:', playerName);
       } else {
         // localStorage에서 사용자 정보 가져오기
         try {
-          const user = JSON.parse(localStorage.getItem('user') || '{}');
-          playerName = user.username || '나';
-        } catch {
+          const userStr = localStorage.getItem('user');
+          if (userStr) {
+            const user = JSON.parse(userStr);
+            playerName = user.username || '나';
+            console.log('✅ localStorage에서 내 이름 찾음:', playerName);
+          } else {
+            playerName = '나';
+            console.log('⚠️ localStorage에 user 정보 없음');
+          }
+        } catch (error) {
+          console.error('❌ localStorage 파싱 에러:', error);
           playerName = '나';
         }
       }
@@ -559,8 +635,10 @@ function Game() {
       // 상대방 정보인 경우
       if (playerInfo?.opponent?.username) {
         playerName = playerInfo.opponent.username;
+        console.log('✅ playerInfo에서 상대방 이름 찾음:', playerName);
       } else {
         playerName = '상대방';
+        console.log('⚠️ 상대방 정보 없음, 기본값 사용');
       }
     }
 
@@ -597,10 +675,18 @@ function Game() {
     );
   };
 
-  // transformedGameState에서 플레이어 정보 가져오기
+  // 플레이어 정보는 원본 게임 상태에서 가져오고, 화면 표시용 상태는 따로 변환
   const currentGameState = getGameState();
-  const myPlayer = currentGameState.players.find((p: any) => p.id === playerId);
-  const opponentPlayer = currentGameState.players.find((p: any) => p.id !== playerId);
+  const myPlayer = gameState.players.find((p: any) => p.id === playerId);
+  const opponentPlayer = gameState.players.find((p: any) => p.id !== playerId);
+
+  console.log('🎮 플레이어 정보 확인:', {
+    playerId,
+    myPlayer,
+    opponentPlayer,
+    playerInfo,
+    gameState: gameState.players
+  });
 
   return (
     <GameContainer>

@@ -85,15 +85,17 @@ const MainMenu: React.FC = () => {
       });
 
       socketRef.current.on('queueJoined', (data: {mode: string, queueSize: number}) => {
-        console.log('큐 참가:', data);
+        console.log('✅ 큐 참가 성공:', data);
         setIsMatchmaking(true);
         setMatchmakingType(data.mode as 'ranked' | 'custom');
+        setMessage(`매칭 대기 중... (${data.queueSize}명 대기중)`);
       });
 
       socketRef.current.on('queueLeft', () => {
-        console.log('큐 떠남');
+        console.log('❌ 큐 떠남');
         setIsMatchmaking(false);
         setMatchmakingType(null);
+        setMessage('');
       });
 
       socketRef.current.on('gameStarted', (data: {playerId: string, roomId: string, gameState?: any}) => {

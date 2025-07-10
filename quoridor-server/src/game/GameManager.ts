@@ -147,16 +147,34 @@ export class GameManager {
 
         this.rooms.set(roomId, room);
 
-        // 플레이어 정보 수집
+        // 플레이어 정보 수집 - 실제 사용자명 확인
+        console.log('🎮 플레이어 정보 준비:', {
+            player1: {
+                userId: (firstPlayer as any).userId,
+                username: (firstPlayer as any).username,
+                rating: (firstPlayer as any).rating
+            },
+            player2: {
+                userId: (secondPlayer as any).userId,
+                username: (secondPlayer as any).username,
+                rating: (secondPlayer as any).rating
+            }
+        });
+
         const player1Info = {
             id: 'player1',
-            username: (firstPlayer as any).username || 'Player 1'
+            username: (firstPlayer as any).username || `User_${(firstPlayer as any).userId?.toString().slice(-6)}`
         };
         
         const player2Info = {
             id: 'player2', 
-            username: (secondPlayer as any).username || 'Player 2'
+            username: (secondPlayer as any).username || `User_${(secondPlayer as any).userId?.toString().slice(-6)}`
         };
+
+        console.log('📤 전송할 플레이어 정보:', {
+            player1Info,
+            player2Info
+        });
 
         // 플레이어에게 게임 시작 알림 (게임 상태도 함께 전송)
         firstPlayer.emit('gameStarted', { 
@@ -174,6 +192,13 @@ export class GameManager {
 
         // 게임 상태 전송
         this.io.to(roomId).emit('gameState', gameState);
+
+        console.log(`🎯 게임 초기 턴 정보:`, {
+            currentTurn: gameState.currentTurn,
+            player1: `${(firstPlayer as any).userId}`,
+            player2: `${(secondPlayer as any).userId}`,
+            firstPlayerIsCurrentTurn: gameState.currentTurn === 'player1'
+        });
 
         // 턴 타이머 시작
         this.startTurnTimer(roomId);
@@ -433,6 +458,8 @@ export class GameManager {
         const userId = (socket as any).userId;
         const rating = (socket as any).rating || 1200;
 
+        console.log(`🎯 랭크 큐 참여 시도: ${userId}, 레이팅: ${rating}`);
+
         const request: MatchmakingRequest = {
             userId,
             rating,
@@ -440,13 +467,17 @@ export class GameManager {
         };
 
         this.matchmakingSystem.addToQueue(request);
+        const queueSize = this.matchmakingSystem.getQueueSize(GameMode.RANKED);
+        
+        console.log(`✅ 랭크 큐 추가 완료: ${userId}, 현재 큐 크기: ${queueSize}`);
+        
         socket.emit('queueJoined', { 
             mode: GameMode.RANKED, 
-            queueSize: this.matchmakingSystem.getQueueSize(GameMode.RANKED) 
+            queueSize: queueSize
         });
         socket.emit('notification', { 
             type: 'info', 
-            message: '랭크 게임 매칭을 시작합니다...', 
+            message: `랭크 게임 매칭을 시작합니다... (대기 중: ${queueSize}명)`, 
             duration: 3000 
         });
     }
@@ -455,6 +486,8 @@ export class GameManager {
         const userId = (socket as any).userId;
         const rating = (socket as any).rating || 1200;
 
+        console.log(`🎯 커스텀 큐 참여 시도: ${userId}, 레이팅: ${rating}`);
+
         const request: MatchmakingRequest = {
             userId,
             rating,
@@ -462,13 +495,17 @@ export class GameManager {
         };
 
         this.matchmakingSystem.addToQueue(request);
+        const queueSize = this.matchmakingSystem.getQueueSize(GameMode.CUSTOM);
+        
+        console.log(`✅ 커스텀 큐 추가 완료: ${userId}, 현재 큐 크기: ${queueSize}`);
+        
         socket.emit('queueJoined', { 
             mode: GameMode.CUSTOM, 
-            queueSize: this.matchmakingSystem.getQueueSize(GameMode.CUSTOM) 
+            queueSize: queueSize
         });
         socket.emit('notification', { 
             type: 'info', 
-            message: '일반 게임 매칭을 시작합니다...', 
+            message: `일반 게임 매칭을 시작합니다... (대기 중: ${queueSize}명)`, 
             duration: 3000 
         });
     }
@@ -548,14 +585,26 @@ export class GameManager {
     }
 
     private startMatchmakingLoop(): void {
+        console.log('🔄 매칭 루프 시작됨');
+        
         setInterval(() => {
+            // 현재 큐 상태 로그
+            const rankedQueueSize = this.matchmakingSystem.getQueueSize(GameMode.RANKED);
+            const customQueueSize = this.matchmakingSystem.getQueueSize(GameMode.CUSTOM);
+            
+            if (rankedQueueSize > 0 || customQueueSize > 0) {
+                console.log(`🔍 매칭 시도 중... 랭크: ${rankedQueueSize}명, 커스텀: ${customQueueSize}명`);
+            }
+            
             // 랭크 매칭 처리
             this.matchmakingSystem.processMatching(GameMode.RANKED, (match) => {
+                console.log(`🎮 랭크 매칭 발견! ${match.player1.userId} vs ${match.player2.userId}`);
                 this.createRankedGame(match.player1, match.player2);
             });
 
             // 커스텀 매칭 처리
             this.matchmakingSystem.processMatching(GameMode.CUSTOM, (match) => {
+                console.log(`🎮 커스텀 매칭 발견! ${match.player1.userId} vs ${match.player2.userId}`);
                 this.createCustomGame(match.player1, match.player2);
             });
         }, 1000); // 1초마다 매칭 시도
@@ -646,11 +695,20 @@ export class GameManager {
     }
 
     private findSocketByUserId(userId: string): Socket | null {
+        console.log(`🔍 소켓 찾기 시작: ${userId}`);
+        console.log(`📊 현재 연결된 소켓 수: ${this.io.sockets.sockets.size}`);
+        
         for (const [socketId, socket] of this.io.sockets.sockets) {
-            if ((socket as any).userId === userId) {
+            const socketUserId = (socket as any).userId;
+            console.log(`🔎 소켓 확인: ${socketId} -> userId: ${socketUserId}`);
+            
+            if (socketUserId === userId) {
+                console.log(`✅ 소켓 찾음: ${userId} -> ${socketId}`);
                 return socket;
             }
         }
+        
+        console.log(`❌ 소켓을 찾을 수 없음: ${userId}`);
         return null;
     }
 
