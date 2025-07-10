@@ -607,13 +607,13 @@ function Game() {
     setShowQuitDialog(true);
   };
 
-  // 게임 상태를 내 시점으로 변환하는 함수
+  // 게임 상태를 내 시점으로 변환하는 함수 (보드 표시용만)
   const getTransformedGameState = (): GameState => {
     if (playerId !== 'player2') {
       return gameState; // player1이거나 관전자면 그대로
     }
 
-    // player2일 때 보드를 180도 회전
+    // player2일 때 보드를 180도 회전 (좌표만 변환, currentTurn은 그대로)
     const transformedPlayers = gameState.players.map(player => ({
       ...player,
       position: {
@@ -633,7 +633,8 @@ function Game() {
     return {
       ...gameState,
       players: transformedPlayers,
-      walls: transformedWalls
+      walls: transformedWalls,
+      currentTurn: gameState.currentTurn // 원본 currentTurn 유지
     };
   };
 

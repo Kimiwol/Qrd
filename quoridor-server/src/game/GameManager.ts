@@ -77,6 +77,7 @@ export class GameManager {
         socket.on('placeWall', (data) => this.handleWallPlacement(socket, data));
         socket.on('restartGame', () => this.handleGameRestart(socket));
         socket.on('turnTimeout', () => this.handleTurnTimeout(socket));
+        socket.on('forfeit', () => this.handleForfeit(socket));
         
         // 랭크 시스템 이벤트 핸들러
         socket.on('joinRankedQueue', () => this.handleJoinRankedQueue(socket));
@@ -256,6 +257,24 @@ export class GameManager {
         this.io.to(room.id).emit('gameRestarted');
         
         this.startTurnTimer(room.id);
+    }
+
+    private handleForfeit(socket: Socket) {
+        const room = this.findPlayerRoom(socket.id);
+        if (!room || !room.isGameActive) return;
+
+        const playerData = room.players.get(socket.id);
+        if (!playerData) return;
+
+        const { playerId } = playerData;
+        
+        // 상대방이 승리자가 됨
+        const winnerId = playerId === 'player1' ? 'player2' : 'player1';
+        
+        console.log(`🏳️ 플레이어 ${playerId}가 기권했습니다. 승리자: ${winnerId}`);
+        
+        // 게임 종료 처리
+        this.endGame(room, winnerId);
     }
 
     private handlePlayerDisconnect(socket: Socket) {
