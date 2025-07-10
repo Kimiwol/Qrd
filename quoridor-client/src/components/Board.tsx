@@ -202,6 +202,55 @@ const Wall = styled.div<{ isHorizontal: boolean }>`
   }
 `;
 
+const WallPreview = styled.div<{ isHorizontal: boolean }>`
+  position: absolute;
+  background: transparent;
+  border: 2px dashed #4CAF50;
+  z-index: 3;
+  border-radius: 2px;
+  pointer-events: none;
+
+  ${props => props.isHorizontal ? `
+    width: 128px;
+    height: 12px;
+    left: -4px;
+    top: 62px;
+  ` : `
+    width: 12px;
+    height: 128px;
+    left: 62px;
+    top: -4px;
+  `}
+
+  @media (max-width: 768px) {
+    ${props => props.isHorizontal ? `
+      width: 76px;
+      height: 8px;
+      left: -3px;
+      top: 36.5px;
+    ` : `
+      width: 8px;
+      height: 76px;
+      left: 36.5px;
+      top: -3px;
+    `}
+  }
+  
+  @media (max-width: 480px) {
+    ${props => props.isHorizontal ? `
+      width: 65px;
+      height: 6px;
+      left: -2.5px;
+      top: 31px;
+    ` : `
+      width: 6px;
+      height: 65px;
+      left: 31px;
+      top: -2.5px;
+    `}
+  }
+`;
+
 interface BoardProps {
   gameState: GameState;
   onCellClick: (position: Position) => void;
@@ -306,9 +355,8 @@ const Board: React.FC<BoardProps> = ({ gameState, onCellClick, onWallPlace }) =>
               />
             )}
             {wallPreview && wallPreview.position.x === x && wallPreview.position.y === y && (
-              <Wall 
-                isHorizontal={wallPreview.isHorizontal} 
-                style={{ backgroundColor: '#4CAF5066', pointerEvents: 'none' }}
+              <WallPreview 
+                isHorizontal={wallPreview.isHorizontal}
               />
             )}
           </Cell>

@@ -20,7 +20,7 @@ const GameContainer = styled.div`
 
 const Header = styled.div`
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   padding: 10px 20px;
   background: rgba(255, 255, 255, 0.1);
@@ -42,26 +42,6 @@ const Title = styled.h1`
   
   @media (max-width: 768px) {
     font-size: 18px;
-  }
-`;
-
-const Timer = styled.div<{ isTimeRunningOut: boolean }>`
-  color: ${props => props.isTimeRunningOut ? '#ff6b6b' : '#ffffff'};
-  font-size: 20px;
-  font-weight: 600;
-  padding: 8px 16px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 20px;
-  animation: ${props => props.isTimeRunningOut ? 'pulse 1s infinite' : 'none'};
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.6; }
-  }
-  
-  @media (max-width: 768px) {
-    font-size: 16px;
-    padding: 6px 12px;
   }
 `;
 
@@ -132,12 +112,20 @@ const PlayerAvatar = styled.div<{ isPlayer1: boolean }>`
 
 const PlayerDetails = styled.div`
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+`;
+
+const PlayerHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 `;
 
 const PlayerName = styled.div`
   font-size: 18px;
   font-weight: 600;
-  margin-bottom: 5px;
   
   @media (max-width: 768px) {
     font-size: 16px;
@@ -148,7 +136,6 @@ const WallInfo = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 5px;
 `;
 
 const WallIconContainer = styled.div`
@@ -307,6 +294,32 @@ const GameOverlay = styled.div`
   @media (max-width: 768px) {
     padding: 30px 40px;
     font-size: 24px;
+  }
+`;
+
+const PlayerTimer = styled.div<{ isTimeRunningOut: boolean; isActive: boolean }>`
+  color: ${props => props.isTimeRunningOut ? '#ff6b6b' : '#666'};
+  font-size: 14px;
+  font-weight: 600;
+  padding: 4px 8px;
+  background: ${props => props.isActive ? 'rgba(76, 175, 80, 0.2)' : 'rgba(0, 0, 0, 0.1)'};
+  border-radius: 12px;
+  border: 2px solid ${props => props.isActive ? '#4CAF50' : 'transparent'};
+  animation: ${props => props.isTimeRunningOut && props.isActive ? 'pulse 1s infinite' : 'none'};
+  opacity: ${props => props.isActive ? 1 : 0.5};
+  transition: all 0.3s ease;
+  min-width: 50px;
+  text-align: center;
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+  
+  @media (max-width: 768px) {
+    font-size: 12px;
+    padding: 3px 6px;
+    min-width: 40px;
   }
 `;
 
@@ -531,9 +544,20 @@ function Game() {
   };
 
   const renderPlayerCard = (player: any, position: 'top' | 'bottom', transformedState: GameState) => {
-    const isCurrentTurn = transformedState.currentTurn === player.id;
+    // 원본 gameState의 currentTurn과 비교해야 함
+    const isCurrentTurn = gameState.currentTurn === player.id;
     const isPlayer1 = player.id === 'player1';
     const isMe = player.id === playerId;
+    
+    // 디버깅용 로그
+    console.log(`🎮 PlayerCard Debug:`, {
+      playerId: player.id,
+      originalCurrentTurn: gameState.currentTurn,
+      transformedCurrentTurn: transformedState.currentTurn,
+      isCurrentTurn,
+      isMe,
+      myPlayerId: playerId
+    });
     
     const wallIcons = Array.from({ length: 10 }, (_, i) => (
       <WallIcon key={i} isActive={i < player.wallsLeft} />
@@ -550,9 +574,17 @@ function Game() {
           {isPlayer1 ? '🔴' : '🔵'}
         </PlayerAvatar>
         <PlayerDetails>
-          <PlayerName>
-            {isMe ? '나' : '상대방'} {isCurrentTurn && '(턴)'}
-          </PlayerName>
+          <PlayerHeader>
+            <PlayerName>
+              {isMe ? '나' : '상대방'}
+            </PlayerName>
+            <PlayerTimer 
+              isTimeRunningOut={timeLeft <= 10} 
+              isActive={isCurrentTurn}
+            >
+              {isCurrentTurn ? `⏱️ ${timeLeft}초` : '대기 중'}
+            </PlayerTimer>
+          </PlayerHeader>
           <WallInfo>
             <WallIconContainer>
               {wallIcons}
@@ -569,13 +601,19 @@ function Game() {
   const myPlayer = transformedGameState.players.find(p => p.id === playerId);
   const opponentPlayer = transformedGameState.players.find(p => p.id !== playerId);
 
+  // 전체 게임 상태 디버깅
+  console.log(`🎮 전체 Game 상태:`, {
+    playerId,
+    currentTurn: gameState.currentTurn,
+    gameStatePlayers: gameState.players.map(p => ({ id: p.id, pos: p.position })),
+    myPlayer: myPlayer ? { id: myPlayer.id, pos: myPlayer.position } : null,
+    opponentPlayer: opponentPlayer ? { id: opponentPlayer.id, pos: opponentPlayer.position } : null
+  });
+
   return (
     <GameContainer>
       <Header>
         <Title>🏛️ Quoridor</Title>
-        <Timer isTimeRunningOut={timeLeft <= 10}>
-          ⏱️ {timeLeft}초
-        </Timer>
       </Header>
 
       <GameControls>
