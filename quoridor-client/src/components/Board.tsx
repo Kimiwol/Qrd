@@ -73,20 +73,20 @@ const WallPlacementArea = styled.div<{ type: 'horizontal' | 'vertical' }>`
   border-radius: 3px;
 
   ${props => props.type === 'horizontal' ? `
-    width: 128px;
-    height: 16px;
-    left: -4px;
-    top: 64px;
+    width: 140px;
+    height: 24px;
+    left: -10px;
+    top: 58px;
 
     &:hover {
       background-color: rgba(76, 175, 80, 0.3);
       border: 2px dashed #4CAF50;
     }
   ` : `
-    width: 16px;
-    height: 128px;
-    left: 64px;
-    top: -4px;
+    width: 24px;
+    height: 140px;
+    left: 58px;
+    top: -10px;
 
     &:hover {
       background-color: rgba(76, 175, 80, 0.3);
@@ -96,29 +96,29 @@ const WallPlacementArea = styled.div<{ type: 'horizontal' | 'vertical' }>`
 
   @media (max-width: 768px) {
     ${props => props.type === 'horizontal' ? `
-      width: 76px;
-      height: 12px;
-      left: -3px;
-      top: 38px;
+      width: 80px;
+      height: 16px;
+      left: -6px;
+      top: 33px;
     ` : `
-      width: 12px;
-      height: 76px;
-      left: 38px;
-      top: -3px;
+      width: 16px;
+      height: 80px;
+      left: 33px;
+      top: -6px;
     `}
   }
   
   @media (max-width: 480px) {
     ${props => props.type === 'horizontal' ? `
-      width: 65px;
-      height: 10px;
-      left: -2.5px;
-      top: 32.5px;
+      width: 70px;
+      height: 14px;
+      left: -5px;
+      top: 28px;
     ` : `
-      width: 10px;
-      height: 65px;
-      left: 32.5px;
-      top: -2.5px;
+      width: 14px;
+      height: 70px;
+      left: 28px;
+      top: -5px;
     `}
   }
 `;

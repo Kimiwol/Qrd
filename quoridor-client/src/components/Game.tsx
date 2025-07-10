@@ -3,7 +3,7 @@ import io from 'socket.io-client';
 import styled from 'styled-components';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Board from './Board';
-import { GameState, Position } from '../types';
+import { GameState, Position, PlayerInfo, GameStartData } from '../types';
 
 const GameContainer = styled.div`
   display: flex;
@@ -342,6 +342,10 @@ function Game() {
     type: 'move' | 'wall';
     data: any;
   } | null>(null);
+  const [playerInfo, setPlayerInfo] = useState<{
+    me: PlayerInfo;
+    opponent: PlayerInfo;
+  } | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -410,6 +414,13 @@ function Game() {
       setPlayerId(assignedPlayerId);
     });
 
+    newSocket.on('gameStarted', (data: GameStartData) => {
+      setPlayerId(data.playerId);
+      setGameState(data.gameState);
+      setPlayerInfo(data.playerInfo);
+      resetTimer();
+    });
+
     newSocket.on('gameState', (newGameState: GameState) => {
       setGameState(newGameState);
       resetTimer();
@@ -443,28 +454,18 @@ function Game() {
 
   const handleCellClick = (position: Position) => {
     if (socket && gameState.currentTurn === playerId && !winner && !isPaused) {
-      // 보드 회전 적용 - 내가 player2일 때 좌표를 원래대로 변환
-      const transformedPosition = playerId === 'player2' 
-        ? { x: 8 - position.x, y: 8 - position.y }
-        : position;
-      
       setConfirmAction({
         type: 'move',
-        data: transformedPosition
+        data: position
       });
     }
   };
 
   const handleWallPlace = (position: Position, isHorizontal: boolean) => {
     if (socket && gameState.currentTurn === playerId && !winner && !isPaused) {
-      // 보드 회전 적용 - 내가 player2일 때 좌표를 원래대로 변환
-      const transformedPosition = playerId === 'player2' 
-        ? { x: 8 - position.x, y: 8 - position.y }
-        : position;
-      
       setConfirmAction({
         type: 'wall',
-        data: { position: transformedPosition, isHorizontal }
+        data: { position, isHorizontal }
       });
     }
   };
@@ -512,35 +513,9 @@ function Game() {
     setShowQuitDialog(true);
   };
 
-  // 게임 상태를 내 시점으로 변환하는 함수 (보드 표시용만)
-  const getTransformedGameState = (): GameState => {
-    if (playerId !== 'player2') {
-      return gameState; // player1이거나 관전자면 그대로
-    }
-
-    // player2일 때 보드를 180도 회전 (좌표만 변환, currentTurn은 그대로)
-    const transformedPlayers = gameState.players.map(player => ({
-      ...player,
-      position: {
-        x: 8 - player.position.x,
-        y: 8 - player.position.y
-      }
-    }));
-
-    const transformedWalls = gameState.walls.map(wall => ({
-      ...wall,
-      position: {
-        x: 8 - wall.position.x,
-        y: 8 - wall.position.y
-      }
-    }));
-
-    return {
-      ...gameState,
-      players: transformedPlayers,
-      walls: transformedWalls,
-      currentTurn: gameState.currentTurn // 원본 currentTurn 유지
-    };
+  // 게임 상태를 그대로 사용 (좌표 변환 없음)
+  const getGameState = (): GameState => {
+    return gameState;
   };
 
   const renderPlayerCard = (player: any, position: 'top' | 'bottom', transformedState: GameState) => {
@@ -548,16 +523,6 @@ function Game() {
     const isCurrentTurn = gameState.currentTurn === player.id;
     const isPlayer1 = player.id === 'player1';
     const isMe = player.id === playerId;
-    
-    // 디버깅용 로그
-    console.log(`🎮 PlayerCard Debug:`, {
-      playerId: player.id,
-      originalCurrentTurn: gameState.currentTurn,
-      transformedCurrentTurn: transformedState.currentTurn,
-      isCurrentTurn,
-      isMe,
-      myPlayerId: playerId
-    });
     
     const wallIcons = Array.from({ length: 10 }, (_, i) => (
       <WallIcon key={i} isActive={i < player.wallsLeft} />
@@ -576,7 +541,10 @@ function Game() {
         <PlayerDetails>
           <PlayerHeader>
             <PlayerName>
-              {isMe ? '나' : '상대방'}
+              {isMe 
+                ? (playerInfo?.me.username || '나')
+                : (playerInfo?.opponent.username || '상대방')
+              }
             </PlayerName>
             <PlayerTimer 
               isTimeRunningOut={timeLeft <= 10} 
@@ -597,18 +565,9 @@ function Game() {
   };
 
   // transformedGameState에서 플레이어 정보 가져오기
-  const transformedGameState = getTransformedGameState();
-  const myPlayer = transformedGameState.players.find(p => p.id === playerId);
-  const opponentPlayer = transformedGameState.players.find(p => p.id !== playerId);
-
-  // 전체 게임 상태 디버깅
-  console.log(`🎮 전체 Game 상태:`, {
-    playerId,
-    currentTurn: gameState.currentTurn,
-    gameStatePlayers: gameState.players.map(p => ({ id: p.id, pos: p.position })),
-    myPlayer: myPlayer ? { id: myPlayer.id, pos: myPlayer.position } : null,
-    opponentPlayer: opponentPlayer ? { id: opponentPlayer.id, pos: opponentPlayer.position } : null
-  });
+  const currentGameState = getGameState();
+  const myPlayer = currentGameState.players.find((p: any) => p.id === playerId);
+  const opponentPlayer = currentGameState.players.find((p: any) => p.id !== playerId);
 
   return (
     <GameContainer>
@@ -630,21 +589,21 @@ function Game() {
 
       <GameArea>
         {/* 상대방 프로필 (상단) */}
-        {opponentPlayer ? renderPlayerCard(opponentPlayer, 'top', transformedGameState) : (
+        {opponentPlayer ? renderPlayerCard(opponentPlayer, 'top', currentGameState) : (
           <div>상대방 정보 없음</div>
         )}
 
         {/* 게임 보드 (중앙) */}
         <BoardWrapper>
           <Board
-            gameState={transformedGameState}
+            gameState={currentGameState}
             onCellClick={handleCellClick}
             onWallPlace={handleWallPlace}
           />
         </BoardWrapper>
 
         {/* 내 프로필 (하단) */}
-        {myPlayer ? renderPlayerCard(myPlayer, 'bottom', transformedGameState) : (
+        {myPlayer ? renderPlayerCard(myPlayer, 'bottom', currentGameState) : (
           <div>내 정보 없음</div>
         )}
       </GameArea>

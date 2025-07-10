@@ -10,7 +10,7 @@ import { GameState, Position, Wall, GameMode, GameResult, MatchmakingRequest } f
 interface Room {
     id: string;
     mode: GameMode;
-    players: Map<string, { socket: Socket; userId: string; playerId: string; rating?: number }>;
+    players: Map<string, { socket: Socket; userId: string; playerId: string; rating?: number; username?: string }>;
     gameState: GameState;
     turnTimer: NodeJS.Timeout | null;
     isGameActive: boolean;
@@ -129,14 +129,16 @@ export class GameManager {
             socket: firstPlayer,
             userId: (firstPlayer as any).userId,
             playerId: 'player1',
-            rating: (firstPlayer as any).rating
+            rating: (firstPlayer as any).rating,
+            username: (firstPlayer as any).username
         });
 
         room.players.set(secondPlayer.id, {
             socket: secondPlayer,
             userId: (secondPlayer as any).userId,
             playerId: 'player2',
-            rating: (secondPlayer as any).rating
+            rating: (secondPlayer as any).rating,
+            username: (secondPlayer as any).username
         });
 
         // 방에 참가
@@ -145,16 +147,29 @@ export class GameManager {
 
         this.rooms.set(roomId, room);
 
+        // 플레이어 정보 수집
+        const player1Info = {
+            id: 'player1',
+            username: (firstPlayer as any).username || 'Player 1'
+        };
+        
+        const player2Info = {
+            id: 'player2', 
+            username: (secondPlayer as any).username || 'Player 2'
+        };
+
         // 플레이어에게 게임 시작 알림 (게임 상태도 함께 전송)
         firstPlayer.emit('gameStarted', { 
             playerId: 'player1', 
             roomId,
-            gameState 
+            gameState,
+            playerInfo: { me: player1Info, opponent: player2Info }
         });
         secondPlayer.emit('gameStarted', { 
             playerId: 'player2', 
             roomId,
-            gameState 
+            gameState,
+            playerInfo: { me: player2Info, opponent: player1Info }
         });
 
         // 게임 상태 전송
@@ -373,15 +388,19 @@ export class GameManager {
                 if (user) {
                     (socket as any).rating = user.rating;
                     (socket as any).rank = RatingSystem.getRankByRating(user.rating);
+                    (socket as any).username = user.username;
                 }
             } else {
                 (socket as any).rating = 1200; // 기본 레이팅
                 (socket as any).rank = RatingSystem.getRankByRating(1200);
+                (socket as any).username = `User_${userId?.toString().slice(-6) || 'Unknown'}`;
             }
         } catch (error) {
             console.error('레이팅 로드 실패:', error);
+            const userId = (socket as any).userId;
             (socket as any).rating = 1200;
             (socket as any).rank = RatingSystem.getRankByRating(1200);
+            (socket as any).username = `User_${userId?.toString().slice(-6) || 'Unknown'}`;
         }
     }
 

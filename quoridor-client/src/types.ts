@@ -19,3 +19,18 @@ export interface GameState {
     walls: Wall[];
     currentTurn: string;
 }
+
+export interface PlayerInfo {
+    id: string;
+    username: string;
+}
+
+export interface GameStartData {
+    playerId: string;
+    roomId: string;
+    gameState: GameState;
+    playerInfo: {
+        me: PlayerInfo;
+        opponent: PlayerInfo;
+    };
+}
