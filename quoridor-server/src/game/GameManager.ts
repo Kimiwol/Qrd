@@ -312,6 +312,21 @@ export class GameManager {
 
         // 게임 중인 방에서 제거
         const room = this.findPlayerRoom(socket.id);
+        if (room && room.isGameActive) {
+            const disconnectedPlayerData = room.players.get(socket.id);
+            
+            if (disconnectedPlayerData) {
+                const disconnectedPlayerId = disconnectedPlayerData.playerId;
+                const winnerId = disconnectedPlayerId === 'player1' ? 'player2' : 'player1';
+                
+                console.log(`🚪 플레이어 ${disconnectedPlayerId}가 연결을 끊었습니다. 승리자: ${winnerId}`);
+                
+                // 상대방이 승리
+                this.endGame(room, winnerId);
+                return;
+            }
+        }
+        
         if (room) {
             room.players.delete(socket.id);
             
@@ -340,13 +355,23 @@ export class GameManager {
 
         room.turnTimer = setTimeout(() => {
             if (room.isGameActive) {
-                // 턴 시간 초과
-                room.gameState.currentTurn = room.gameState.currentTurn === 'player1' ? 'player2' : 'player1';
-                this.io.to(roomId).emit('gameState', room.gameState);
-                this.io.to(roomId).emit('turnTimeout', '시간 초과로 턴이 넘어갔습니다.');
+                // 현재 턴 플레이어 찾기
+                const currentTurnPlayer = Array.from(room.players.values())
+                    .find(p => p.playerId === room.gameState.currentTurn);
                 
-                // 새로운 타이머 시작
-                this.startTurnTimer(roomId);
+                if (currentTurnPlayer) {
+                    console.log(`⏰ 시간 초과: ${room.gameState.currentTurn}이 패배`);
+                    
+                    // 시간 초과한 플레이어가 패배
+                    const winnerId = room.gameState.currentTurn === 'player1' ? 'player2' : 'player1';
+                    this.endGame(room, winnerId);
+                } else {
+                    // 플레이어 정보가 없으면 단순히 턴만 변경
+                    room.gameState.currentTurn = room.gameState.currentTurn === 'player1' ? 'player2' : 'player1';
+                    this.io.to(roomId).emit('gameState', room.gameState);
+                    this.io.to(roomId).emit('turnTimedOut', '시간 초과로 턴이 넘어갔습니다.');
+                    this.startTurnTimer(roomId);
+                }
             }
         }, this.TURN_TIME_LIMIT * 1000);
     }
@@ -691,17 +716,13 @@ export class GameManager {
 
         // 현재 턴인 플레이어만 타임아웃 처리
         if (playerId === gameState.currentTurn) {
-            console.log(`⏰ 턴 타임아웃: ${playerId} in room ${room.id}`);
+            console.log(`⏰ 클라이언트에서 타임아웃 신호: ${playerId} in room ${room.id}`);
             
-            // 턴 변경
-            gameState.currentTurn = gameState.currentTurn === 'player1' ? 'player2' : 'player1';
+            // 시간 초과한 플레이어가 패배
+            const winnerId = playerId === 'player1' ? 'player2' : 'player1';
+            console.log(`⏰ 시간 초과로 ${playerId} 패배, 승리자: ${winnerId}`);
             
-            // 클라이언트에 알림
-            this.io.to(room.id).emit('gameState', gameState);
-            this.io.to(room.id).emit('turnTimedOut', `${playerId} 시간 초과로 턴이 넘어갔습니다.`);
-            
-            // 새로운 턴 타이머 시작
-            this.startTurnTimer(room.id);
+            this.endGame(room, winnerId);
         }
     }
 }

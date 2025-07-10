@@ -20,13 +20,14 @@ const GameContainer = styled.div`
 
 const Header = styled.div`
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
   padding: 10px 20px;
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
   border-radius: 12px;
   margin-bottom: 15px;
+  position: relative;
   
   @media (max-width: 768px) {
     padding: 8px 12px;
@@ -39,9 +40,35 @@ const Title = styled.h1`
   margin: 0;
   font-size: 24px;
   font-weight: 600;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   
   @media (max-width: 768px) {
     font-size: 18px;
+  }
+`;
+
+const HeaderQuitButton = styled.button`
+  background: rgba(244, 67, 54, 0.9);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: auto;
+
+  &:hover {
+    background: rgba(244, 67, 54, 1);
+    transform: translateY(-1px);
+  }
+
+  @media (max-width: 768px) {
+    padding: 6px 12px;
+    font-size: 12px;
   }
 `;
 
@@ -163,15 +190,6 @@ const BoardWrapper = styled.div`
   flex-shrink: 0;
 `;
 
-const GameControls = styled.div`
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  display: flex;
-  gap: 10px;
-  z-index: 1000;
-`;
-
 const Dialog = styled.div`
   position: fixed;
   top: 50%;
@@ -230,25 +248,6 @@ const DialogButton = styled.button<{ variant?: 'confirm' | 'cancel' }>`
       background: #da190b;
     }
   `}
-`;
-
-const ControlButton = styled.button`
-  padding: 10px 16px;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  
-  &.quit {
-    background: #ff6b6b;
-    color: white;
-    
-    &:hover {
-      background: #ff5252;
-      transform: translateY(-2px);
-    }
-  }
 `;
 
 const Notification = styled.div`
@@ -415,9 +414,14 @@ function Game() {
     });
 
     newSocket.on('gameStarted', (data: GameStartData) => {
+      console.log('🎮 게임 시작 데이터:', data);
       setPlayerId(data.playerId);
       setGameState(data.gameState);
       setPlayerInfo(data.playerInfo);
+      console.log('플레이어 정보 설정됨:', {
+        playerId: data.playerId,
+        playerInfo: data.playerInfo
+      });
       resetTimer();
     });
 
@@ -426,13 +430,15 @@ function Game() {
       resetTimer();
     });
 
-    newSocket.on('turnTimedOut', () => {
+    newSocket.on('turnTimedOut', (message: string) => {
+      console.log('🕐 턴 타임아웃:', message);
       setShowTimeoutNotification(true);
       setTimeout(() => setShowTimeoutNotification(false), 3000);
       resetTimer();
     });
 
     newSocket.on('gameOver', (winnerId: string) => {
+      console.log('🏁 게임 종료:', winnerId);
       setWinner(winnerId);
     });
 
@@ -445,6 +451,12 @@ function Game() {
       setIsPaused(false);
       setPauseMessage('');
       resetTimer();
+    });
+
+    newSocket.on('playerDisconnected', (message: string) => {
+      console.log('🚪 플레이어 연결 해제:', message);
+      setIsPaused(true);
+      setPauseMessage(message);
     });
 
     return () => {
@@ -528,6 +540,30 @@ function Game() {
       <WallIcon key={i} isActive={i < player.wallsLeft} />
     ));
 
+    // 플레이어 이름 결정 로직 개선
+    let playerName = '알 수 없음';
+    if (isMe) {
+      // 내 정보인 경우
+      if (playerInfo?.me?.username) {
+        playerName = playerInfo.me.username;
+      } else {
+        // localStorage에서 사용자 정보 가져오기
+        try {
+          const user = JSON.parse(localStorage.getItem('user') || '{}');
+          playerName = user.username || '나';
+        } catch {
+          playerName = '나';
+        }
+      }
+    } else {
+      // 상대방 정보인 경우
+      if (playerInfo?.opponent?.username) {
+        playerName = playerInfo.opponent.username;
+      } else {
+        playerName = '상대방';
+      }
+    }
+
     return (
       <PlayerCard 
         key={player.id}
@@ -541,10 +577,7 @@ function Game() {
         <PlayerDetails>
           <PlayerHeader>
             <PlayerName>
-              {isMe 
-                ? (playerInfo?.me.username || '나')
-                : (playerInfo?.opponent.username || '상대방')
-              }
+              {playerName}
             </PlayerName>
             <PlayerTimer 
               isTimeRunningOut={timeLeft <= 10} 
@@ -573,13 +606,10 @@ function Game() {
     <GameContainer>
       <Header>
         <Title>🏛️ Quoridor</Title>
-      </Header>
-
-      <GameControls>
-        <ControlButton className="quit" onClick={showQuitConfirmDialog}>
+        <HeaderQuitButton onClick={showQuitConfirmDialog}>
           나가기
-        </ControlButton>
-      </GameControls>
+        </HeaderQuitButton>
+      </Header>
 
       {showTimeoutNotification && (
         <Notification>
