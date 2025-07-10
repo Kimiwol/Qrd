@@ -88,17 +88,34 @@ const Register = () => {
     }
 
     try {
-      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/register`, {
+      const apiUrl = process.env.REACT_APP_API_URL;
+      console.log('API URL:', apiUrl);
+      console.log('Attempting register request to:', `${apiUrl}/api/register`);
+      
+      const response = await axios.post(`${apiUrl}/api/register`, {
         username,
         email,
         password
+      }, {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        timeout: 10000 // 10초 타임아웃
       });
 
+      console.log('Register successful:', response.data);
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
       navigate('/menu');
     } catch (error: any) {
-      if (error.response?.data?.code === 11000) {
+      console.error('Register error:', error);
+      console.error('Error response:', error.response);
+      
+      if (error.code === 'ECONNABORTED') {
+        setError('서버 연결 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.');
+      } else if (error.response?.status === 0 || !error.response) {
+        setError('서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.');
+      } else if (error.response?.data?.code === 11000) {
         if (error.response.data.keyPattern?.email) {
           setError('이미 사용 중인 이메일입니다.');
         } else if (error.response.data.keyPattern?.username) {

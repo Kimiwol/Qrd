@@ -70,18 +70,39 @@ const Login = () => {
     e.preventDefault();
     setError('');
     
+    const apiUrl = process.env.REACT_APP_API_URL;
+    console.log('API URL:', apiUrl);
+    console.log('Environment:', process.env.NODE_ENV);
+    
     try {
-      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/login`, {
+      console.log('Attempting login request to:', `${apiUrl}/api/login`);
+      
+      const response = await axios.post(`${apiUrl}/api/login`, {
         email,
         password
+      }, {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        timeout: 10000 // 10초 타임아웃
       });
 
+      console.log('Login successful:', response.data);
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
       navigate('/menu');
     } catch (error: any) {
-      if (error.response?.status === 401) {
+      console.error('Login error:', error);
+      console.error('Error response:', error.response);
+      console.error('Error status:', error.response?.status);
+      console.error('Error data:', error.response?.data);
+      
+      if (error.code === 'ECONNABORTED') {
+        setError('서버 연결 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.');
+      } else if (error.response?.status === 401) {
         setError('이메일 또는 비밀번호가 올바르지 않습니다.');
+      } else if (error.response?.status === 0 || !error.response) {
+        setError('서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.');
       } else {
         setError(error.response?.data?.error || '로그인에 실패했습니다.');
       }
