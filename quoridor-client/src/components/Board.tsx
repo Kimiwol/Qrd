@@ -211,6 +211,7 @@ interface BoardProps {
 const Board: React.FC<BoardProps> = ({ gameState, onCellClick, onWallPlace }) => {
   const [wallPreview, setWallPreview] = useState<{position: Position, isHorizontal: boolean} | null>(null);
 
+  // 간단한 이동 가능성 체크 (UI 힌트용)
   const isValidMove = (position: Position): boolean => {
     const currentPlayer = gameState.players.find(p => p.id === gameState.currentTurn);
     if (!currentPlayer) return false;
@@ -218,76 +219,17 @@ const Board: React.FC<BoardProps> = ({ gameState, onCellClick, onWallPlace }) =>
     const dx = Math.abs(position.x - currentPlayer.position.x);
     const dy = Math.abs(position.y - currentPlayer.position.y);
 
-    // 기본 이동 체크
-    if ((dx === 1 && dy === 0) || (dx === 0 && dy === 1)) {
-      const hasPlayer = gameState.players.some(p => 
-        p.id !== currentPlayer.id &&
-        p.position.x === position.x &&
-        p.position.y === position.y
-      );
+    // 다른 플레이어가 있는 위치인지 확인
+    const hasPlayer = gameState.players.some(p => 
+      p.position.x === position.x && p.position.y === position.y
+    );
 
-      if (hasPlayer) return false;
+    if (hasPlayer) return false;
 
-      // 벽에 막혀있는지 확인
-      const isBlocked = gameState.walls.some(wall => {
-        if (wall.isHorizontal) {
-          // 수평 벽이 위아래 이동을 막는 경우
-          return wall.position.y === Math.min(currentPlayer.position.y, position.y) &&
-                 wall.position.x <= currentPlayer.position.x &&
-                 currentPlayer.position.x < wall.position.x + 2;
-        } else {
-          // 수직 벽이 좌우 이동을 막는 경우
-          return wall.position.x === Math.min(currentPlayer.position.x, position.x) &&
-                 wall.position.y <= currentPlayer.position.y &&
-                 currentPlayer.position.y < wall.position.y + 2;
-        }
-      });
-
-      return !isBlocked;
-    }
-
-    // 플레이어 뛰어넘기 체크
-    if ((dx === 2 && dy === 0) || (dx === 0 && dy === 2)) {
-      const midX = (position.x + currentPlayer.position.x) / 2;
-      const midY = (position.y + currentPlayer.position.y) / 2;
-      
-      const hasPlayerInMiddle = gameState.players.some(p =>
-        p.id !== currentPlayer.id &&
-        p.position.x === midX &&
-        p.position.y === midY
-      );
-
-      if (!hasPlayerInMiddle) return false;
-
-      // 뛰어넘을 때 벽에 막혀있는지 확인
-      const isBlockedToMiddle = gameState.walls.some(wall => {
-        if (wall.isHorizontal) {
-          return wall.position.y === Math.min(currentPlayer.position.y, midY) &&
-                 wall.position.x <= currentPlayer.position.x &&
-                 currentPlayer.position.x < wall.position.x + 2;
-        } else {
-          return wall.position.x === Math.min(currentPlayer.position.x, midX) &&
-                 wall.position.y <= currentPlayer.position.y &&
-                 currentPlayer.position.y < wall.position.y + 2;
-        }
-      });
-
-      const isBlockedFromMiddle = gameState.walls.some(wall => {
-        if (wall.isHorizontal) {
-          return wall.position.y === Math.min(midY, position.y) &&
-                 wall.position.x <= midX &&
-                 midX < wall.position.x + 2;
-        } else {
-          return wall.position.x === Math.min(midX, position.x) &&
-                 wall.position.y <= midY &&
-                 midY < wall.position.y + 2;
-        }
-      });
-
-      return !isBlockedToMiddle && !isBlockedFromMiddle;
-    }
-
-    return false;
+    // 기본 이동 (1칸) 또는 점프 이동 (2칸) 허용
+    // 실제 벽 검증은 서버에서 수행
+    return (dx === 1 && dy === 0) || (dx === 0 && dy === 1) || 
+           (dx === 2 && dy === 0) || (dx === 0 && dy === 2);
   };
 
   const renderBoard = () => {

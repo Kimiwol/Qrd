@@ -70,11 +70,14 @@ const GameArea = styled.div`
   flex-direction: column;
   align-items: center;
   flex: 1;
-  position: relative;
+  padding: 0 20px;
+  max-width: 800px;
+  margin: 0 auto;
+  gap: 15px;
   
   @media (max-width: 768px) {
-    height: calc(100vh - 120px);
-    justify-content: space-between;
+    gap: 10px;
+    padding: 0 10px;
   }
 `;
 
@@ -97,19 +100,9 @@ const PlayerCard = styled.div<{
   transition: all 0.3s ease;
   width: 100%;
   max-width: 600px;
-  margin: 0 auto;
-  
-  ${props => props.position === 'top' && `
-    margin-bottom: 20px;
-  `}
-  
-  ${props => props.position === 'bottom' && `
-    margin-top: 20px;
-  `}
   
   @media (max-width: 768px) {
     padding: 12px 16px;
-    margin: ${props => props.position === 'top' ? '0 0 15px 0' : '15px 0 0 0'};
   }
 `;
 
@@ -180,8 +173,7 @@ const BoardWrapper = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
-  flex: 1;
-  margin: 20px 0;
+  flex-shrink: 0;
 `;
 
 const GameControls = styled.div`
@@ -193,7 +185,7 @@ const GameControls = styled.div`
   z-index: 1000;
 `;
 
-const ConfirmDialog = styled.div`
+const Dialog = styled.div`
   position: fixed;
   top: 50%;
   left: 50%;
@@ -207,20 +199,27 @@ const ConfirmDialog = styled.div`
   min-width: 300px;
 `;
 
-const ConfirmMessage = styled.div`
+const DialogTitle = styled.h3`
+  margin: 0 0 15px 0;
+  color: #333;
+  font-size: 20px;
+`;
+
+const DialogMessage = styled.div`
   font-size: 18px;
   font-weight: 500;
   margin-bottom: 20px;
   color: #333;
+  line-height: 1.5;
 `;
 
-const ConfirmButtons = styled.div`
+const DialogButtons = styled.div`
   display: flex;
   justify-content: center;
   gap: 15px;
 `;
 
-const ConfirmButton = styled.button<{ isConfirm?: boolean }>`
+const DialogButton = styled.button<{ variant?: 'confirm' | 'cancel' }>`
   padding: 12px 24px;
   border: none;
   border-radius: 8px;
@@ -229,7 +228,7 @@ const ConfirmButton = styled.button<{ isConfirm?: boolean }>`
   transition: all 0.2s ease;
   min-width: 80px;
   
-  ${props => props.isConfirm ? `
+  ${props => props.variant === 'confirm' ? `
     background: #4CAF50;
     color: white;
     
@@ -261,65 +260,6 @@ const ControlButton = styled.button`
     &:hover {
       background: #ff5252;
       transform: translateY(-2px);
-    }
-  }
-`;
-
-const QuitConfirmDialog = styled.div`
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: white;
-  padding: 30px;
-  border-radius: 16px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-  z-index: 1004;
-  text-align: center;
-  min-width: 320px;
-`;
-
-const QuitDialogTitle = styled.h3`
-  margin: 0 0 15px 0;
-  color: #333;
-  font-size: 20px;
-`;
-
-const QuitDialogMessage = styled.p`
-  margin: 0 0 20px 0;
-  color: #666;
-  line-height: 1.5;
-`;
-
-const QuitDialogButtons = styled.div`
-  display: flex;
-  justify-content: center;
-  gap: 15px;
-`;
-
-const QuitDialogButton = styled.button`
-  padding: 12px 24px;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  
-  &.confirm {
-    background: #f44336;
-    color: white;
-    
-    &:hover {
-      background: #da190b;
-    }
-  }
-  
-  &.cancel {
-    background: #e0e0e0;
-    color: #333;
-    
-    &:hover {
-      background: #d0d0d0;
     }
   }
 `;
@@ -370,49 +310,6 @@ const GameOverlay = styled.div`
   }
 `;
 
-const ContinueDialog = styled.div`
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: white;
-  padding: 30px;
-  border-radius: 16px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-  z-index: 1003;
-  text-align: center;
-`;
-
-const DialogButtons = styled.div`
-  display: flex;
-  justify-content: center;
-  gap: 15px;
-  margin-top: 20px;
-`;
-
-const DialogButton = styled.button`
-  cursor: pointer;
-  transition: all 0.2s ease;
-  
-  &.continue {
-    background: #4CAF50;
-    color: white;
-    
-    &:hover {
-      background: #45a049;
-    }
-  }
-  
-  &.quit {
-    background: #f44336;
-    color: white;
-    
-    &:hover {
-      background: #da190b;
-    }
-  }
-`;
-
 function Game() {
   const [socket, setSocket] = useState<ReturnType<typeof io> | null>(null);
   const [gameState, setGameState] = useState<GameState>({
@@ -439,16 +336,12 @@ function Game() {
   useEffect(() => {
     const state = location.state as any;
     if (state) {
-      console.log('Game 컴포넌트에서 받은 초기 데이터:', state);
-      
       if (state.playerId) {
         setPlayerId(state.playerId);
-        console.log('플레이어 ID 설정:', state.playerId);
       }
       
       if (state.gameState) {
         setGameState(state.gameState);
-        console.log('초기 게임 상태 설정:', state.gameState);
       }
     }
   }, [location.state]);
@@ -465,7 +358,6 @@ function Game() {
         setTimeLeft(prev => {
           if (prev <= 1) {
             if (socket && gameState.currentTurn === playerId) {
-              console.log('⏰ 턴 타임아웃 - 서버에 알림');
               socket.emit('turnTimeout');
             }
             return 0;
@@ -701,7 +593,9 @@ function Game() {
 
       <GameArea>
         {/* 상대방 프로필 (상단) */}
-        {opponentPlayer && renderPlayerCard(opponentPlayer, 'top')}
+        {opponentPlayer ? renderPlayerCard(opponentPlayer, 'top') : (
+          <div>상대방 정보 없음</div>
+        )}
 
         {/* 게임 보드 (중앙) */}
         <BoardWrapper>
@@ -713,24 +607,26 @@ function Game() {
         </BoardWrapper>
 
         {/* 내 프로필 (하단) */}
-        {myPlayer && renderPlayerCard(myPlayer, 'bottom')}
+        {myPlayer ? renderPlayerCard(myPlayer, 'bottom') : (
+          <div>내 정보 없음</div>
+        )}
       </GameArea>
 
       {/* 행동 확인 다이얼로그 */}
       {confirmAction && (
-        <ConfirmDialog>
-          <ConfirmMessage>
+        <Dialog>
+          <DialogMessage>
             {confirmAction.type === 'move' ? '이동하시겠습니까?' : '벽을 설치하시겠습니까?'}
-          </ConfirmMessage>
-          <ConfirmButtons>
-            <ConfirmButton onClick={cancelAction}>
+          </DialogMessage>
+          <DialogButtons>
+            <DialogButton variant="cancel" onClick={cancelAction}>
               ✕
-            </ConfirmButton>
-            <ConfirmButton isConfirm onClick={executeAction}>
+            </DialogButton>
+            <DialogButton variant="confirm" onClick={executeAction}>
               ○
-            </ConfirmButton>
-          </ConfirmButtons>
-        </ConfirmDialog>
+            </DialogButton>
+          </DialogButtons>
+        </Dialog>
       )}
 
       {winner && (
@@ -771,53 +667,35 @@ function Game() {
       )}
 
       {showContinueDialog && (
-        <ContinueDialog>
-          <h3>게임을 다시 시작하시겠습니까?</h3>
+        <Dialog>
+          <DialogTitle>게임을 다시 시작하시겠습니까?</DialogTitle>
           <DialogButtons>
-            <DialogButton className="continue" onClick={handleRestart}>
+            <DialogButton variant="confirm" onClick={handleRestart}>
               계속하기
             </DialogButton>
-            <DialogButton className="quit" onClick={handleQuit}>
+            <DialogButton variant="cancel" onClick={handleQuit}>
               나가기
             </DialogButton>
           </DialogButtons>
-        </ContinueDialog>
+        </Dialog>
       )}
 
       {showQuitDialog && (
-        <QuitConfirmDialog>
-          <QuitDialogTitle>게임을 나가시겠습니까?</QuitDialogTitle>
-          <QuitDialogMessage>
+        <Dialog>
+          <DialogTitle>게임을 나가시겠습니까?</DialogTitle>
+          <DialogMessage>
             게임을 나가면 패배로 처리됩니다.<br />
             정말로 나가시겠습니까?
-          </QuitDialogMessage>
-          <QuitDialogButtons>
-            <QuitDialogButton className="cancel" onClick={handleQuitCancel}>
+          </DialogMessage>
+          <DialogButtons>
+            <DialogButton variant="cancel" onClick={handleQuitCancel}>
               취소
-            </QuitDialogButton>
-            <QuitDialogButton className="confirm" onClick={handleQuitConfirm}>
+            </DialogButton>
+            <DialogButton variant="confirm" onClick={handleQuitConfirm}>
               나가기
-            </QuitDialogButton>
-          </QuitDialogButtons>
-        </QuitConfirmDialog>
-      )}
-
-      {confirmAction && (
-        <ConfirmDialog>
-          <ConfirmMessage>
-            {confirmAction.type === 'move' 
-              ? '이 위치로 이동하시겠습니까?' 
-              : '이 위치에 벽을 설치하시겠습니까?'}
-          </ConfirmMessage>
-          <ConfirmButtons>
-            <ConfirmButton onClick={cancelAction}>
-              ✕ 취소
-            </ConfirmButton>
-            <ConfirmButton isConfirm onClick={executeAction}>
-              ✓ 확인
-            </ConfirmButton>
-          </ConfirmButtons>
-        </ConfirmDialog>
+            </DialogButton>
+          </DialogButtons>
+        </Dialog>
       )}
 
       {isPaused && (

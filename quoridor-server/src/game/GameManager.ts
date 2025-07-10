@@ -166,18 +166,29 @@ export class GameManager {
         console.log(`게임 시작: ${roomId} (Player1: ${(firstPlayer as any).userId}, Player2: ${(secondPlayer as any).userId})`);
     }
 
-    private handlePlayerMove(socket: Socket, newPosition: Position) {
+    // 공통 게임 상태 검증 메서드
+    private validateGameAction(socket: Socket): { room: Room; playerData: any; playerId: string } | null {
         const room = this.findPlayerRoom(socket.id);
-        if (!room || !room.isGameActive) return;
+        if (!room || !room.isGameActive) return null;
 
         const playerData = room.players.get(socket.id);
-        if (!playerData) return;
+        if (!playerData) return null;
 
         const { playerId } = playerData;
         const { gameState } = room;
 
         // 현재 턴인지 확인
-        if (playerId !== gameState.currentTurn) return;
+        if (playerId !== gameState.currentTurn) return null;
+
+        return { room, playerData, playerId };
+    }
+
+    private handlePlayerMove(socket: Socket, newPosition: Position) {
+        const validation = this.validateGameAction(socket);
+        if (!validation) return;
+
+        const { room, playerId } = validation;
+        const { gameState } = room;
 
         const currentPlayer = gameState.players.find(p => p.id === playerId);
         if (!currentPlayer) return;
@@ -198,23 +209,17 @@ export class GameManager {
             // 게임 상태 업데이트 전송
             this.io.to(room.id).emit('gameState', gameState);
             
-            // 새로운 턴 타이머 시작
+            // 턴 타이머 재시작
             this.startTurnTimer(room.id);
         }
     }
 
     private handleWallPlacement(socket: Socket, { position, isHorizontal }: { position: Position; isHorizontal: boolean }) {
-        const room = this.findPlayerRoom(socket.id);
-        if (!room || !room.isGameActive) return;
+        const validation = this.validateGameAction(socket);
+        if (!validation) return;
 
-        const playerData = room.players.get(socket.id);
-        if (!playerData) return;
-
-        const { playerId } = playerData;
+        const { room, playerId } = validation;
         const { gameState } = room;
-
-        // 현재 턴인지 확인
-        if (playerId !== gameState.currentTurn) return;
 
         const currentPlayer = gameState.players.find(p => p.id === playerId);
         if (!currentPlayer) return;

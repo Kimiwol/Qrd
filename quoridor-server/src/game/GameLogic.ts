@@ -65,32 +65,16 @@ export class GameLogic {
         }
 
         // 벽이 보드 범위 안에 있는지 확인
-        if (wall.isHorizontal) {
-            if (wall.position.x < 0 || wall.position.x > 7 || 
-                wall.position.y < 0 || wall.position.y > 7) {
-                return false;
-            }
-        } else {
-            if (wall.position.x < 0 || wall.position.x > 7 || 
-                wall.position.y < 0 || wall.position.y > 7) {
-                return false;
-            }
+        if (wall.position.x < 0 || wall.position.x > 7 || 
+            wall.position.y < 0 || wall.position.y > 7) {
+            return false;
         }
 
         // 이미 설치된 벽과 겹치는지 확인
         const isOverlapping = gameState.walls.some(existingWall => {
-            if (wall.isHorizontal === existingWall.isHorizontal) {
-                return wall.position.x === existingWall.position.x && 
-                       wall.position.y === existingWall.position.y;
-            }
-            // 교차 지점에서 벽이 겹치는 경우 체크
-            if (wall.isHorizontal) {
-                return existingWall.position.x === wall.position.x &&
-                       existingWall.position.y === wall.position.y;
-            } else {
-                return existingWall.position.x === wall.position.x &&
-                       existingWall.position.y === wall.position.y;
-            }
+            return wall.isHorizontal === existingWall.isHorizontal &&
+                   wall.position.x === existingWall.position.x && 
+                   wall.position.y === existingWall.position.y;
         });
 
         return !isOverlapping;
