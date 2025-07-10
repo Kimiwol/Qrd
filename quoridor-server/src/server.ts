@@ -134,6 +134,22 @@ const gameManager = new GameManager(io);
 
 // 서버 시작
 const PORT = process.env.PORT || 4000;
+console.log('🔧 환경 변수:');
+console.log('- PORT:', PORT);
+console.log('- NODE_ENV:', process.env.NODE_ENV);
+console.log('- MONGODB_URI:', process.env.MONGODB_URI ? '설정됨' : '미설정');
+
+console.log('🚀 서버 시작 시도...');
+
 httpServer.listen(PORT, () => {
-    console.log(`🚀 서버가 포트 ${PORT}에서 실행 중입니다`);
+    console.log(`✅ 서버가 포트 ${PORT}에서 성공적으로 시작되었습니다!`);
+    console.log(`🌐 서버 주소: ${process.env.NODE_ENV === 'production' ? 'https://quoridoronline-5ngr.onrender.com' : `http://localhost:${PORT}`}`);
+});
+
+// 서버 에러 핸들링
+httpServer.on('error', (error: any) => {
+    console.error('❌ 서버 에러:', error.message);
+    if (error.code === 'EADDRINUSE') {
+        console.error(`포트 ${PORT}가 이미 사용 중입니다.`);
+    }
 });
