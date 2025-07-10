@@ -81,7 +81,7 @@ const GameArea = styled.div`
 const PlayerCard = styled.div<{ 
   isCurrentTurn: boolean; 
   isPlayer1: boolean; 
-  position: 'top' | 'bottom' | 'side' 
+  position: 'top' | 'bottom' 
 }>`
   display: flex;
   align-items: center;
@@ -95,39 +95,25 @@ const PlayerCard = styled.div<{
   backdrop-filter: blur(10px);
   border: ${props => props.isCurrentTurn ? '3px solid #4CAF50' : '2px solid rgba(255, 255, 255, 0.3)'};
   transition: all 0.3s ease;
-  min-width: 280px;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
   
   ${props => props.position === 'top' && `
-    order: 1;
-    margin-bottom: 15px;
+    margin-bottom: 20px;
   `}
   
   ${props => props.position === 'bottom' && `
-    order: 3;
-    margin-top: 15px;
+    margin-top: 20px;
   `}
   
   @media (max-width: 768px) {
-    margin: ${props => props.position === 'top' ? '0 0 10px 0' : '10px 0 0 0'};
     padding: 12px 16px;
-    min-width: calc(100vw - 40px);
-    justify-content: space-between;
-  }
-  
-  @media (min-width: 769px) {
-    ${props => props.position === 'side' && `
-      position: absolute;
-      ${props.isPlayer1 ? 'left: 20px;' : 'right: 20px;'}
-      top: 50%;
-      transform: translateY(-50%);
-      flex-direction: column;
-      text-align: center;
-      min-width: 200px;
-    `}
+    margin: ${props => props.position === 'top' ? '0 0 15px 0' : '15px 0 0 0'};
   }
 `;
 
-const PlayerAvatar = styled.div<{ isPlayer1: boolean; position: string }>`
+const PlayerAvatar = styled.div<{ isPlayer1: boolean }>`
   width: 50px;
   height: 50px;
   border-radius: 50%;
@@ -140,8 +126,7 @@ const PlayerAvatar = styled.div<{ isPlayer1: boolean; position: string }>`
   font-size: 24px;
   font-weight: bold;
   color: white;
-  margin-right: ${props => props.position === 'side' ? '0' : '15px'};
-  margin-bottom: ${props => props.position === 'side' ? '10px' : '0'};
+  margin-right: 15px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   
   @media (max-width: 768px) {
@@ -149,7 +134,6 @@ const PlayerAvatar = styled.div<{ isPlayer1: boolean; position: string }>`
     height: 40px;
     font-size: 20px;
     margin-right: 12px;
-    margin-bottom: 0;
   }
 `;
 
@@ -193,14 +177,11 @@ const WallCount = styled.span`
 `;
 
 const BoardWrapper = styled.div`
-  order: 2;
   display: flex;
   justify-content: center;
   align-items: center;
-  
-  @media (min-width: 769px) {
-    margin: 0 240px;
-  }
+  flex: 1;
+  margin: 20px 0;
 `;
 
 const GameControls = styled.div`
@@ -212,6 +193,59 @@ const GameControls = styled.div`
   z-index: 1000;
 `;
 
+const ConfirmDialog = styled.div`
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 30px;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  z-index: 1004;
+  text-align: center;
+  min-width: 300px;
+`;
+
+const ConfirmMessage = styled.div`
+  font-size: 18px;
+  font-weight: 500;
+  margin-bottom: 20px;
+  color: #333;
+`;
+
+const ConfirmButtons = styled.div`
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+`;
+
+const ConfirmButton = styled.button<{ isConfirm?: boolean }>`
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 80px;
+  
+  ${props => props.isConfirm ? `
+    background: #4CAF50;
+    color: white;
+    
+    &:hover {
+      background: #45a049;
+    }
+  ` : `
+    background: #f44336;
+    color: white;
+    
+    &:hover {
+      background: #da190b;
+    }
+  `}
+`;
+
 const ControlButton = styled.button`
   padding: 10px 16px;
   border: none;
@@ -220,13 +254,72 @@ const ControlButton = styled.button`
   cursor: pointer;
   transition: all 0.2s ease;
   
-  &.logout {
+  &.quit {
     background: #ff6b6b;
     color: white;
     
     &:hover {
       background: #ff5252;
       transform: translateY(-2px);
+    }
+  }
+`;
+
+const QuitConfirmDialog = styled.div`
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 30px;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  z-index: 1004;
+  text-align: center;
+  min-width: 320px;
+`;
+
+const QuitDialogTitle = styled.h3`
+  margin: 0 0 15px 0;
+  color: #333;
+  font-size: 20px;
+`;
+
+const QuitDialogMessage = styled.p`
+  margin: 0 0 20px 0;
+  color: #666;
+  line-height: 1.5;
+`;
+
+const QuitDialogButtons = styled.div`
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+`;
+
+const QuitDialogButton = styled.button`
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &.confirm {
+    background: #f44336;
+    color: white;
+    
+    &:hover {
+      background: #da190b;
+    }
+  }
+  
+  &.cancel {
+    background: #e0e0e0;
+    color: #333;
+    
+    &:hover {
+      background: #d0d0d0;
     }
   }
 `;
@@ -298,10 +391,6 @@ const DialogButtons = styled.div`
 `;
 
 const DialogButton = styled.button`
-  padding: 12px 24px;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
   
@@ -338,6 +427,11 @@ function Game() {
   const [timeLeft, setTimeLeft] = useState(60);
   const [showTimeoutNotification, setShowTimeoutNotification] = useState(false);
   const [showContinueDialog, setShowContinueDialog] = useState(false);
+  const [showQuitDialog, setShowQuitDialog] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{
+    type: 'move' | 'wall';
+    data: any;
+  } | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -444,14 +538,46 @@ function Game() {
 
   const handleCellClick = (position: Position) => {
     if (socket && gameState.currentTurn === playerId && !winner && !isPaused) {
-      socket.emit('move', position);
+      // 보드 회전 적용 - 내가 player2일 때 좌표를 원래대로 변환
+      const transformedPosition = playerId === 'player2' 
+        ? { x: 8 - position.x, y: 8 - position.y }
+        : position;
+      
+      setConfirmAction({
+        type: 'move',
+        data: transformedPosition
+      });
     }
   };
 
   const handleWallPlace = (position: Position, isHorizontal: boolean) => {
     if (socket && gameState.currentTurn === playerId && !winner && !isPaused) {
-      socket.emit('placeWall', { position, isHorizontal });
+      // 보드 회전 적용 - 내가 player2일 때 좌표를 원래대로 변환
+      const transformedPosition = playerId === 'player2' 
+        ? { x: 8 - position.x, y: 8 - position.y }
+        : position;
+      
+      setConfirmAction({
+        type: 'wall',
+        data: { position: transformedPosition, isHorizontal }
+      });
     }
+  };
+
+  const executeAction = () => {
+    if (!confirmAction || !socket) return;
+
+    if (confirmAction.type === 'move') {
+      socket.emit('move', confirmAction.data);
+    } else if (confirmAction.type === 'wall') {
+      socket.emit('placeWall', confirmAction.data);
+    }
+    
+    setConfirmAction(null);
+  };
+
+  const cancelAction = () => {
+    setConfirmAction(null);
   };
 
   const handleRestart = () => {
@@ -466,12 +592,52 @@ function Game() {
     navigate('/menu');
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    navigate('/login');
+  const handleQuitConfirm = () => {
+    if (socket) {
+      socket.emit('forfeit'); // 서버에 기권 신호 전송
+    }
+    navigate('/menu');
   };
 
-  const renderPlayerCard = (player: any, position: 'top' | 'bottom' | 'side') => {
+  const handleQuitCancel = () => {
+    setShowQuitDialog(false);
+  };
+
+  const showQuitConfirmDialog = () => {
+    setShowQuitDialog(true);
+  };
+
+  // 게임 상태를 내 시점으로 변환하는 함수
+  const getTransformedGameState = (): GameState => {
+    if (playerId !== 'player2') {
+      return gameState; // player1이거나 관전자면 그대로
+    }
+
+    // player2일 때 보드를 180도 회전
+    const transformedPlayers = gameState.players.map(player => ({
+      ...player,
+      position: {
+        x: 8 - player.position.x,
+        y: 8 - player.position.y
+      }
+    }));
+
+    const transformedWalls = gameState.walls.map(wall => ({
+      ...wall,
+      position: {
+        x: 8 - wall.position.x,
+        y: 8 - wall.position.y
+      }
+    }));
+
+    return {
+      ...gameState,
+      players: transformedPlayers,
+      walls: transformedWalls
+    };
+  };
+
+  const renderPlayerCard = (player: any, position: 'top' | 'bottom') => {
     const isCurrentTurn = gameState.currentTurn === player.id;
     const isPlayer1 = player.id === 'player1';
     const isMe = player.id === playerId;
@@ -487,7 +653,7 @@ function Game() {
         isPlayer1={isPlayer1}
         position={position}
       >
-        <PlayerAvatar isPlayer1={isPlayer1} position={position}>
+        <PlayerAvatar isPlayer1={isPlayer1}>
           {isPlayer1 ? '🔴' : '🔵'}
         </PlayerAvatar>
         <PlayerDetails>
@@ -505,9 +671,11 @@ function Game() {
     );
   };
 
-  const isMobile = window.innerWidth <= 768;
   const myPlayer = gameState.players.find(p => p.id === playerId);
   const opponentPlayer = gameState.players.find(p => p.id !== playerId);
+
+  // 변환된 게임 상태 사용
+  const transformedGameState = getTransformedGameState();
 
   return (
     <GameContainer>
@@ -519,8 +687,8 @@ function Game() {
       </Header>
 
       <GameControls>
-        <ControlButton className="logout" onClick={logout}>
-          로그아웃
+        <ControlButton className="quit" onClick={showQuitConfirmDialog}>
+          나가기
         </ControlButton>
       </GameControls>
 
@@ -531,24 +699,38 @@ function Game() {
       )}
 
       <GameArea>
-        {opponentPlayer && renderPlayerCard(
-          opponentPlayer, 
-          isMobile ? 'top' : 'side'
-        )}
+        {/* 상대방 프로필 (상단) */}
+        {opponentPlayer && renderPlayerCard(opponentPlayer, 'top')}
 
+        {/* 게임 보드 (중앙) */}
         <BoardWrapper>
           <Board
-            gameState={gameState}
+            gameState={transformedGameState}
             onCellClick={handleCellClick}
             onWallPlace={handleWallPlace}
           />
         </BoardWrapper>
 
-        {myPlayer && renderPlayerCard(
-          myPlayer, 
-          isMobile ? 'bottom' : 'side'
-        )}
+        {/* 내 프로필 (하단) */}
+        {myPlayer && renderPlayerCard(myPlayer, 'bottom')}
       </GameArea>
+
+      {/* 행동 확인 다이얼로그 */}
+      {confirmAction && (
+        <ConfirmDialog>
+          <ConfirmMessage>
+            {confirmAction.type === 'move' ? '이동하시겠습니까?' : '벽을 설치하시겠습니까?'}
+          </ConfirmMessage>
+          <ConfirmButtons>
+            <ConfirmButton onClick={cancelAction}>
+              ✕
+            </ConfirmButton>
+            <ConfirmButton isConfirm onClick={executeAction}>
+              ○
+            </ConfirmButton>
+          </ConfirmButtons>
+        </ConfirmDialog>
+      )}
 
       {winner && (
         <GameOverlay>
@@ -599,6 +781,42 @@ function Game() {
             </DialogButton>
           </DialogButtons>
         </ContinueDialog>
+      )}
+
+      {showQuitDialog && (
+        <QuitConfirmDialog>
+          <QuitDialogTitle>게임을 나가시겠습니까?</QuitDialogTitle>
+          <QuitDialogMessage>
+            게임을 나가면 패배로 처리됩니다.<br />
+            정말로 나가시겠습니까?
+          </QuitDialogMessage>
+          <QuitDialogButtons>
+            <QuitDialogButton className="cancel" onClick={handleQuitCancel}>
+              취소
+            </QuitDialogButton>
+            <QuitDialogButton className="confirm" onClick={handleQuitConfirm}>
+              나가기
+            </QuitDialogButton>
+          </QuitDialogButtons>
+        </QuitConfirmDialog>
+      )}
+
+      {confirmAction && (
+        <ConfirmDialog>
+          <ConfirmMessage>
+            {confirmAction.type === 'move' 
+              ? '이 위치로 이동하시겠습니까?' 
+              : '이 위치에 벽을 설치하시겠습니까?'}
+          </ConfirmMessage>
+          <ConfirmButtons>
+            <ConfirmButton onClick={cancelAction}>
+              ✕ 취소
+            </ConfirmButton>
+            <ConfirmButton isConfirm onClick={executeAction}>
+              ✓ 확인
+            </ConfirmButton>
+          </ConfirmButtons>
+        </ConfirmDialog>
       )}
 
       {isPaused && (
