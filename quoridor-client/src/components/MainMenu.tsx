@@ -79,6 +79,14 @@ const MainMenu: React.FC = () => {
         setMatchmakingType(null);
       });
 
+      socketRef.current.on('gameStarted', (data: {playerId: string, roomId: string}) => {
+        console.log('Game started:', data);
+        setIsMatchmaking(false);
+        setMatchmakingType(null);
+        // 게임 페이지로 이동
+        navigate('/game', { state: { playerId: data.playerId, roomId: data.roomId } });
+      });
+
       socketRef.current.on('gameState', (gameState: any) => {
         // 게임이 시작되면 게임 페이지로 이동
         navigate('/game', { state: { gameState } });
@@ -280,12 +288,19 @@ const MainMenu: React.FC = () => {
       
       {/* 매칭 진행 상태 */}
       {isMatchmaking && (
-        <div className="matchmaking-overlay">
+        <div className="matchmaking-overlay" onClick={(e) => e.stopPropagation()}>
           <div className="matchmaking-popup">
             <h3>🔍 매칭 중...</h3>
             <p>{matchmakingType === 'ranked' ? '랭크 게임' : '일반 게임'} 상대방을 찾고 있습니다.</p>
+            <p style={{fontSize: '0.8rem', color: '#999'}}>
+              상태: {isMatchmaking ? '매칭중' : '대기'} | 타입: {matchmakingType}
+            </p>
             <div className="loading-spinner"></div>
-            <button onClick={cancelMatchmaking} className="cancel-btn">
+            <button 
+              onClick={cancelMatchmaking} 
+              className="cancel-btn"
+              style={{touchAction: 'manipulation'}}
+            >
               매칭 취소
             </button>
           </div>
@@ -401,11 +416,15 @@ const MainMenu: React.FC = () => {
                 <p>비슷한 실력의 플레이어와 매칭됩니다.</p>
                 <p>승리 시 레이팅 상승, 패배 시 레이팅 하락</p>
                 <button 
-                  onClick={startRankedMatch}
+                  onClick={() => {
+                    console.log('랭크 매칭 버튼 클릭됨');
+                    startRankedMatch();
+                  }}
                   disabled={loading || isMatchmaking}
                   className="match-btn ranked-match-btn"
+                  style={{touchAction: 'manipulation'}}
                 >
-                  {isMatchmaking ? '매칭 중...' : '랭크 매칭 시작'}
+                  {isMatchmaking && matchmakingType === 'ranked' ? '매칭 중...' : '랭크 매칭 시작'}
                 </button>
               </div>
               
@@ -414,11 +433,15 @@ const MainMenu: React.FC = () => {
                 <p>빠른 대전으로 연습하세요.</p>
                 <p>레이팅에 영향을 주지 않습니다.</p>
                 <button 
-                  onClick={startCustomMatch}
+                  onClick={() => {
+                    console.log('일반 매칭 버튼 클릭됨');
+                    startCustomMatch();
+                  }}
                   disabled={loading || isMatchmaking}
                   className="match-btn custom-match-btn"
+                  style={{touchAction: 'manipulation'}}
                 >
-                  {isMatchmaking ? '매칭 중...' : '일반 매칭 시작'}
+                  {isMatchmaking && matchmakingType === 'custom' ? '매칭 중...' : '일반 매칭 시작'}
                 </button>
               </div>
             </div>

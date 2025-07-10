@@ -10,6 +10,19 @@ const BoardContainer = styled.div`
   background-color: #cccccc;
   padding: 10px;
   position: relative;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(9, 40px);
+    grid-template-rows: repeat(9, 40px);
+    gap: 1px;
+    padding: 5px;
+    margin: 0 auto;
+  }
+  
+  @media (max-width: 480px) {
+    grid-template-columns: repeat(9, 35px);
+    grid-template-rows: repeat(9, 35px);
+  }
 `;
 
 const Cell = styled.div<{ isCurrentTurn: boolean; isValidMove: boolean; showValidMove: boolean }>`
@@ -23,6 +36,18 @@ const Cell = styled.div<{ isCurrentTurn: boolean; isValidMove: boolean; showVali
   cursor: pointer;
   position: relative;
   transition: background-color 0.2s;
+
+  @media (max-width: 768px) {
+    width: 40px;
+    height: 40px;
+    font-size: 14px;
+  }
+  
+  @media (max-width: 480px) {
+    width: 35px;
+    height: 35px;
+    font-size: 12px;
+  }
 
   &:hover {
     background-color: ${props => props.isValidMove ? '#e6ffe6' : '#ffe6e6'};

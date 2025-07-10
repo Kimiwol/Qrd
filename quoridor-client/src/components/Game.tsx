@@ -9,7 +9,16 @@ const Container = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px;
+  padding: 10px;
+  min-height: 100vh;
+  box-sizing: border-box;
+  max-width: 100vw;
+  overflow-x: hidden;
+  
+  @media (max-width: 768px) {
+    padding: 5px;
+    min-height: 100vh;
+  }
 `;
 
 const Title = styled.h1`
@@ -21,6 +30,13 @@ const GameInfo = styled.div`
   margin-bottom: 20px;
   display: flex;
   gap: 20px;
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    margin-bottom: 10px;
+  }
 `;
 
 const PlayerInfo = styled.div<{ isCurrentTurn: boolean }>`
@@ -28,6 +44,12 @@ const PlayerInfo = styled.div<{ isCurrentTurn: boolean }>`
   border: 2px solid ${props => props.isCurrentTurn ? '#4CAF50' : '#ddd'};
   border-radius: 5px;
   background-color: ${props => props.isCurrentTurn ? '#e8f5e9' : 'white'};
+  
+  @media (max-width: 768px) {
+    padding: 8px;
+    font-size: 14px;
+    text-align: center;
+  }
 `;
 
 const GameOver = styled.div`

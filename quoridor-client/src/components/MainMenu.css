@@ -513,11 +513,12 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.8);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 999;
+  z-index: 9999;
+  padding: 1rem;
 }
 
 .matchmaking-popup {
@@ -527,7 +528,20 @@
   text-align: center;
   max-width: 400px;
   width: 90%;
+  min-width: 280px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  animation: popupSlideIn 0.3s ease-out;
+}
+
+@keyframes popupSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .matchmaking-popup h3 {
@@ -539,6 +553,8 @@
 .matchmaking-popup p {
   margin: 0 0 1.5rem 0;
   color: #666;
+  font-size: 1rem;
+  line-height: 1.5;
 }
 
 .loading-spinner {
@@ -565,10 +581,37 @@
   cursor: pointer;
   font-size: 1rem;
   transition: background 0.2s ease;
+  min-height: 44px; /* 모바일 터치 타겟 크기 */
+  min-width: 100px;
 }
 
 .cancel-btn:hover {
   background: #d32f2f;
+}
+
+/* 모바일 전용 스타일 */
+@media (max-width: 768px) {
+  .matchmaking-popup {
+    padding: 1.5rem;
+    margin: 1rem;
+    max-width: none;
+    width: calc(100% - 2rem);
+  }
+  
+  .matchmaking-popup h3 {
+    font-size: 1.3rem;
+  }
+  
+  .matchmaking-popup p {
+    font-size: 0.9rem;
+  }
+  
+  .cancel-btn {
+    padding: 1rem 2rem;
+    font-size: 1.1rem;
+    width: 100%;
+    max-width: 200px;
+  }
 }
 
 /* 랭크 섹션 개선 스타일 */
