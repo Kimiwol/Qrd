@@ -178,36 +178,6 @@ const Board: React.FC<BoardProps> = ({ gameState, onCellClick, onWallPlace }) =>
     return false;
   };
 
-  const handleCellInteraction = (e: React.MouseEvent, position: Position) => {
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    // 마지막 열과 행에서는 벽 설치를 허용하지 않음
-    if (x > rect.width - 15 && position.x < 7) {
-      onWallPlace(position, false);
-    } else if (y > rect.height - 15 && position.y < 7) {
-      onWallPlace(position, true);
-    } else {
-      onCellClick(position);
-    }
-  };
-
-  const handleCellMouseMove = (e: React.MouseEvent, position: Position) => {
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    // 마지막 열과 행에서는 벽 미리보기를 표시하지 않음
-    if (x > rect.width - 15 && position.x < 7) {
-      setWallPreview({ position, isHorizontal: false });
-    } else if (y > rect.height - 15 && position.y < 7) {
-      setWallPreview({ position, isHorizontal: true });
-    } else {
-      setWallPreview(null);
-    }
-  };
-
   const renderBoard = () => {
     const cells = [];
     
