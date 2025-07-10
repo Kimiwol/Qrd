@@ -76,6 +76,7 @@ export class GameManager {
         socket.on('move', (data) => this.handlePlayerMove(socket, data));
         socket.on('placeWall', (data) => this.handleWallPlacement(socket, data));
         socket.on('restartGame', () => this.handleGameRestart(socket));
+        socket.on('turnTimeout', () => this.handleTurnTimeout(socket));
         
         // 랭크 시스템 이벤트 핸들러
         socket.on('joinRankedQueue', () => this.handleJoinRankedQueue(socket));
@@ -490,6 +491,11 @@ export class GameManager {
         const player1Socket = this.findSocketByUserId(player1Request.userId);
         const player2Socket = this.findSocketByUserId(player2Request.userId);
 
+        console.log(`🔍 소켓 찾기 결과:`, {
+            player1: { userId: player1Request.userId, found: !!player1Socket },
+            player2: { userId: player2Request.userId, found: !!player2Socket }
+        });
+
         if (player1Socket && player2Socket) {
             // 매칭 성공 알림
             player1Socket.emit('notification', { 
@@ -503,7 +509,23 @@ export class GameManager {
                 duration: 3000 
             });
             
+            console.log(`🎮 랭크 게임 생성 시작: ${player1Request.userId} vs ${player2Request.userId}`);
             this.createGame(player1Socket, player2Socket, GameMode.RANKED);
+        } else {
+            console.error(`❌ 매칭 실패: 소켓을 찾을 수 없음`, {
+                player1Socket: !!player1Socket,
+                player2Socket: !!player2Socket
+            });
+            
+            // 실패한 플레이어들을 다시 큐에 추가
+            if (!player1Socket) {
+                console.log(`🔄 플레이어1 소켓 없음, 큐에서 제거: ${player1Request.userId}`);
+                this.matchmakingSystem.removeFromQueue(player1Request.userId, GameMode.RANKED);
+            }
+            if (!player2Socket) {
+                console.log(`🔄 플레이어2 소켓 없음, 큐에서 제거: ${player2Request.userId}`);
+                this.matchmakingSystem.removeFromQueue(player2Request.userId, GameMode.RANKED);
+            }
         }
     }
 
@@ -512,6 +534,11 @@ export class GameManager {
         const player1Socket = this.findSocketByUserId(player1Request.userId);
         const player2Socket = this.findSocketByUserId(player2Request.userId);
 
+        console.log(`🔍 커스텀 게임 소켓 찾기 결과:`, {
+            player1: { userId: player1Request.userId, found: !!player1Socket },
+            player2: { userId: player2Request.userId, found: !!player2Socket }
+        });
+
         if (player1Socket && player2Socket) {
             // 매칭 성공 알림
             player1Socket.emit('notification', { 
@@ -525,7 +552,21 @@ export class GameManager {
                 duration: 3000 
             });
             
+            console.log(`🎮 커스텀 게임 생성 시작: ${player1Request.userId} vs ${player2Request.userId}`);
             this.createGame(player1Socket, player2Socket, GameMode.CUSTOM);
+        } else {
+            console.error(`❌ 커스텀 매칭 실패: 소켓을 찾을 수 없음`, {
+                player1Socket: !!player1Socket,
+                player2Socket: !!player2Socket
+            });
+            
+            // 실패한 플레이어들을 다시 큐에서 제거
+            if (!player1Socket) {
+                this.matchmakingSystem.removeFromQueue(player1Request.userId, GameMode.CUSTOM);
+            }
+            if (!player2Socket) {
+                this.matchmakingSystem.removeFromQueue(player2Request.userId, GameMode.CUSTOM);
+            }
         }
     }
 
@@ -585,6 +626,32 @@ export class GameManager {
                 winnerPlayer.socket.emit('notification', { type: 'error', message: '레이팅 업데이트에 실패했습니다.' });
                 loserPlayer.socket.emit('notification', { type: 'error', message: '레이팅 업데이트에 실패했습니다.' });
             }
+        }
+    }
+
+    private handleTurnTimeout(socket: Socket) {
+        const room = this.findPlayerRoom(socket.id);
+        if (!room || !room.isGameActive) return;
+
+        const playerData = room.players.get(socket.id);
+        if (!playerData) return;
+
+        const { playerId } = playerData;
+        const { gameState } = room;
+
+        // 현재 턴인 플레이어만 타임아웃 처리
+        if (playerId === gameState.currentTurn) {
+            console.log(`⏰ 턴 타임아웃: ${playerId} in room ${room.id}`);
+            
+            // 턴 변경
+            gameState.currentTurn = gameState.currentTurn === 'player1' ? 'player2' : 'player1';
+            
+            // 클라이언트에 알림
+            this.io.to(room.id).emit('gameState', gameState);
+            this.io.to(room.id).emit('turnTimedOut', `${playerId} 시간 초과로 턴이 넘어갔습니다.`);
+            
+            // 새로운 턴 타이머 시작
+            this.startTurnTimer(room.id);
         }
     }
 }

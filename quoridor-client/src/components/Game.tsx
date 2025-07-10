@@ -199,7 +199,14 @@ function Game() {
     if (!isPaused && gameState.currentTurn && !winner) {
       timer = setInterval(() => {
         setTimeLeft(prev => {
-          if (prev <= 0) return 0;
+          if (prev <= 1) {
+            // 타이머가 0이 되면 서버에 턴 타임아웃 알림
+            if (socket && gameState.currentTurn === playerId) {
+              console.log('⏰ 턴 타임아웃 - 서버에 알림');
+              socket.emit('turnTimeout');
+            }
+            return 0;
+          }
           return prev - 1;
         });
       }, 1000);
@@ -208,7 +215,7 @@ function Game() {
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [isPaused, gameState.currentTurn, winner]);
+  }, [isPaused, gameState.currentTurn, winner, socket, playerId]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');

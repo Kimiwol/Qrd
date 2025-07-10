@@ -89,10 +89,27 @@ const Player = styled.div<{ isPlayer1: boolean }>`
   background-color: ${props => props.isPlayer1 ? '#ff4444' : '#4444ff'};
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   transition: transform 0.2s;
-  z-index: 2;
+  z-index: 10;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border: 3px solid #ffffff;
+
+  @media (max-width: 768px) {
+    width: 32px;
+    height: 32px;
+    border: 2px solid #ffffff;
+  }
+  
+  @media (max-width: 480px) {
+    width: 28px;
+    height: 28px;
+    border: 2px solid #ffffff;
+  }
 
   &:hover {
-    transform: scale(1.1);
+    transform: translate(-50%, -50%) scale(1.1);
   }
 `;
 

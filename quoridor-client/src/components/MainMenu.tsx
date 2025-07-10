@@ -97,25 +97,35 @@ const MainMenu: React.FC = () => {
       });
 
       socketRef.current.on('gameStarted', (data: {playerId: string, roomId: string, gameState?: any}) => {
-        console.log('게임 시작됨:', data);
+        console.log('🎮 게임 시작 이벤트 받음:', data);
+        console.log('현재 매칭 상태:', { isMatchmaking, matchmakingType });
+        
+        // 매칭 상태 즉시 해제
         setIsMatchmaking(false);
         setMatchmakingType(null);
         
         // 더 구체적인 로깅
-        console.log('게임 화면으로 이동:', {
+        console.log('🚀 게임 화면으로 이동 시도:', {
           playerId: data.playerId,
           roomId: data.roomId,
-          hasGameState: !!data.gameState
+          hasGameState: !!data.gameState,
+          userAgent: navigator.userAgent
         });
         
-        // 게임 페이지로 이동
-        navigate('/game', { 
-          state: { 
-            playerId: data.playerId, 
-            roomId: data.roomId,
-            gameState: data.gameState 
-          } 
-        });
+        try {
+          // 게임 페이지로 이동
+          navigate('/game', { 
+            state: { 
+              playerId: data.playerId, 
+              roomId: data.roomId,
+              gameState: data.gameState 
+            },
+            replace: true  // replace 옵션 추가
+          });
+          console.log('✅ 게임 페이지 이동 완료');
+        } catch (error) {
+          console.error('❌ 게임 페이지 이동 실패:', error);
+        }
       });
 
       socketRef.current.on('gameState', (gameState: any) => {
