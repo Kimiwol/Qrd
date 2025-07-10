@@ -68,6 +68,8 @@ const Login = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    
     try {
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/login`, {
         email,
@@ -78,7 +80,11 @@ const Login = () => {
       localStorage.setItem('user', JSON.stringify(response.data.user));
       navigate('/game');
     } catch (error: any) {
-      setError(error.response?.data?.error || '로그인에 실패했습니다.');
+      if (error.response?.status === 401) {
+        setError('이메일 또는 비밀번호가 올바르지 않습니다.');
+      } else {
+        setError(error.response?.data?.error || '로그인에 실패했습니다.');
+      }
     }
   };
 

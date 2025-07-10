@@ -70,9 +70,20 @@ const Register = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     
     if (password !== confirmPassword) {
       setError('비밀번호가 일치하지 않습니다.');
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('비밀번호는 최소 6자 이상이어야 합니다.');
+      return;
+    }
+
+    if (username.length < 3) {
+      setError('사용자 이름은 최소 3자 이상이어야 합니다.');
       return;
     }
 
@@ -87,7 +98,15 @@ const Register = () => {
       localStorage.setItem('user', JSON.stringify(response.data.user));
       navigate('/game');
     } catch (error: any) {
-      setError(error.response?.data?.message || '회원가입에 실패했습니다.');
+      if (error.response?.data?.code === 11000) {
+        if (error.response.data.keyPattern?.email) {
+          setError('이미 사용 중인 이메일입니다.');
+        } else if (error.response.data.keyPattern?.username) {
+          setError('이미 사용 중인 사용자 이름입니다.');
+        }
+      } else {
+        setError(error.response?.data?.message || '회원가입에 실패했습니다.');
+      }
     }
   };
 
