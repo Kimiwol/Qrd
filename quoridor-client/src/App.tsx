@@ -14,6 +14,14 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 function App() {
+  // 앱 시작 시 환경 변수 확인
+  console.log('App started');
+  console.log('Environment variables:', {
+    NODE_ENV: process.env.NODE_ENV,
+    REACT_APP_API_URL: process.env.REACT_APP_API_URL,
+    REACT_APP_WS_URL: process.env.REACT_APP_WS_URL
+  });
+  
   return (
     <Router>
       <Routes>

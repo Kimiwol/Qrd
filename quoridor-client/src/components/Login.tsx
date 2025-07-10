@@ -66,7 +66,13 @@ const Login = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
+  // 기본 로그 추가
+  console.log('Login component rendered');
+  console.log('Environment:', process.env.NODE_ENV);
+  console.log('API URL:', process.env.REACT_APP_API_URL);
+
   const handleSubmit = async (e: React.FormEvent) => {
+    console.log('handleSubmit called!');
     e.preventDefault();
     setError('');
     
