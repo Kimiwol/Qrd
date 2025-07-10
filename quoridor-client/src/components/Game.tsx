@@ -530,8 +530,8 @@ function Game() {
     };
   };
 
-  const renderPlayerCard = (player: any, position: 'top' | 'bottom') => {
-    const isCurrentTurn = gameState.currentTurn === player.id;
+  const renderPlayerCard = (player: any, position: 'top' | 'bottom', transformedState: GameState) => {
+    const isCurrentTurn = transformedState.currentTurn === player.id;
     const isPlayer1 = player.id === 'player1';
     const isMe = player.id === playerId;
     
@@ -564,11 +564,10 @@ function Game() {
     );
   };
 
-  const myPlayer = gameState.players.find(p => p.id === playerId);
-  const opponentPlayer = gameState.players.find(p => p.id !== playerId);
-
-  // 변환된 게임 상태 사용
+  // transformedGameState에서 플레이어 정보 가져오기
   const transformedGameState = getTransformedGameState();
+  const myPlayer = transformedGameState.players.find(p => p.id === playerId);
+  const opponentPlayer = transformedGameState.players.find(p => p.id !== playerId);
 
   return (
     <GameContainer>
@@ -593,7 +592,7 @@ function Game() {
 
       <GameArea>
         {/* 상대방 프로필 (상단) */}
-        {opponentPlayer ? renderPlayerCard(opponentPlayer, 'top') : (
+        {opponentPlayer ? renderPlayerCard(opponentPlayer, 'top', transformedGameState) : (
           <div>상대방 정보 없음</div>
         )}
 
@@ -607,7 +606,7 @@ function Game() {
         </BoardWrapper>
 
         {/* 내 프로필 (하단) */}
-        {myPlayer ? renderPlayerCard(myPlayer, 'bottom') : (
+        {myPlayer ? renderPlayerCard(myPlayer, 'bottom', transformedGameState) : (
           <div>내 정보 없음</div>
         )}
       </GameArea>

@@ -226,10 +226,27 @@ const Board: React.FC<BoardProps> = ({ gameState, onCellClick, onWallPlace }) =>
 
     if (hasPlayer) return false;
 
-    // 기본 이동 (1칸) 또는 점프 이동 (2칸) 허용
-    // 실제 벽 검증은 서버에서 수행
-    return (dx === 1 && dy === 0) || (dx === 0 && dy === 1) || 
-           (dx === 2 && dy === 0) || (dx === 0 && dy === 2);
+    // 기본 이동 (1칸)
+    if ((dx === 1 && dy === 0) || (dx === 0 && dy === 1)) {
+      return true;
+    }
+
+    // 점프 이동 (2칸) - 중간에 상대방이 있을 때만 허용
+    if ((dx === 2 && dy === 0) || (dx === 0 && dy === 2)) {
+      const midX = (position.x + currentPlayer.position.x) / 2;
+      const midY = (position.y + currentPlayer.position.y) / 2;
+      
+      // 중간 위치에 상대방이 있는지 확인
+      const hasPlayerInMiddle = gameState.players.some(p =>
+        p.id !== currentPlayer.id &&
+        p.position.x === midX &&
+        p.position.y === midY
+      );
+
+      return hasPlayerInMiddle;
+    }
+
+    return false;
   };
 
   const renderBoard = () => {
