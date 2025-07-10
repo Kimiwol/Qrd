@@ -6,28 +6,32 @@ const BoardContainer = styled.div`
   display: grid;
   grid-template-columns: repeat(9, 60px);
   grid-template-rows: repeat(9, 60px);
-  gap: 2px;
-  background-color: #cccccc;
-  padding: 10px;
+  gap: 8px;
+  background-color: #f5f5f5;
+  padding: 20px;
   position: relative;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   
   @media (max-width: 768px) {
-    grid-template-columns: repeat(9, 40px);
-    grid-template-rows: repeat(9, 40px);
-    gap: 1px;
-    padding: 5px;
+    grid-template-columns: repeat(9, 35px);
+    grid-template-rows: repeat(9, 35px);
+    gap: 6px;
+    padding: 15px;
     margin: 0 auto;
   }
   
   @media (max-width: 480px) {
-    grid-template-columns: repeat(9, 35px);
-    grid-template-rows: repeat(9, 35px);
+    grid-template-columns: repeat(9, 30px);
+    grid-template-rows: repeat(9, 30px);
+    gap: 5px;
+    padding: 10px;
   }
 `;
 
 const Cell = styled.div<{ isCurrentTurn: boolean; isValidMove: boolean; showValidMove: boolean }>`
-  background-color: ${props => props.showValidMove ? '#e0e0e0' : '#ffffff'};
-  border: 1px solid #999999;
+  background-color: ${props => props.showValidMove ? '#e8f5e9' : '#ffffff'};
+  border: 2px solid ${props => props.showValidMove ? '#4CAF50' : '#e0e0e0'};
   width: 60px;
   height: 60px;
   display: flex;
@@ -35,51 +39,88 @@ const Cell = styled.div<{ isCurrentTurn: boolean; isValidMove: boolean; showVali
   align-items: center;
   cursor: pointer;
   position: relative;
-  transition: background-color 0.2s;
+  transition: all 0.2s ease;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 
   @media (max-width: 768px) {
-    width: 40px;
-    height: 40px;
+    width: 35px;
+    height: 35px;
     font-size: 14px;
+    border-radius: 6px;
   }
   
   @media (max-width: 480px) {
-    width: 35px;
-    height: 35px;
+    width: 30px;
+    height: 30px;
     font-size: 12px;
+    border-radius: 4px;
   }
 
   &:hover {
-    background-color: ${props => props.isValidMove ? '#e6ffe6' : '#ffe6e6'};
+    background-color: ${props => props.isValidMove ? '#c8e6c9' : '#ffebee'};
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   }
 `;
 
 const WallPlacementArea = styled.div<{ type: 'horizontal' | 'vertical' }>`
   position: absolute;
   background-color: transparent;
-  transition: background-color 0.2s;
+  transition: all 0.2s ease;
   cursor: pointer;
   z-index: 2;
+  border-radius: 3px;
 
   ${props => props.type === 'horizontal' ? `
-    width: 122px;
-    height: 10px;
-    left: -1px;
-    top: 55px;  /* 셀 아래쪽 중앙에 위치하도록 수정 */
+    width: 128px;
+    height: 16px;
+    left: -4px;
+    top: 64px;
 
     &:hover {
-      background-color: #4CAF5066;
+      background-color: rgba(76, 175, 80, 0.3);
+      border: 2px dashed #4CAF50;
     }
   ` : `
-    width: 10px;
-    height: 122px;
-    left: 55px;  /* 셀 오른쪽 중앙에 위치하도록 수정 */
-    top: -1px;
+    width: 16px;
+    height: 128px;
+    left: 64px;
+    top: -4px;
 
     &:hover {
-      background-color: #4CAF5066;
+      background-color: rgba(76, 175, 80, 0.3);
+      border: 2px dashed #4CAF50;
     }
   `}
+
+  @media (max-width: 768px) {
+    ${props => props.type === 'horizontal' ? `
+      width: 76px;
+      height: 12px;
+      left: -3px;
+      top: 38px;
+    ` : `
+      width: 12px;
+      height: 76px;
+      left: 38px;
+      top: -3px;
+    `}
+  }
+  
+  @media (max-width: 480px) {
+    ${props => props.type === 'horizontal' ? `
+      width: 65px;
+      height: 10px;
+      left: -2.5px;
+      top: 32.5px;
+    ` : `
+      width: 10px;
+      height: 65px;
+      left: 32.5px;
+      top: -2.5px;
+    `}
+  }
 `;
 
 const Player = styled.div<{ isPlayer1: boolean }>`
@@ -115,21 +156,50 @@ const Player = styled.div<{ isPlayer1: boolean }>`
 
 const Wall = styled.div<{ isHorizontal: boolean }>`
   position: absolute;
-  background-color: #8b4513;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  background: linear-gradient(135deg, #8b4513, #a0522d);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
   z-index: 3;
+  border-radius: 2px;
 
   ${props => props.isHorizontal ? `
-    width: 122px;
-    height: 10px;
-    left: -1px;
-    top: 55px;  /* 셀 아래쪽 중앙에 위치하도록 수정 */
+    width: 128px;
+    height: 12px;
+    left: -4px;
+    top: 62px;
   ` : `
-    width: 10px;
-    height: 122px;
-    left: 55px;  /* 셀 오른쪽 중앙에 위치하도록 수정 */
-    top: -1px;
+    width: 12px;
+    height: 128px;
+    left: 62px;
+    top: -4px;
   `}
+
+  @media (max-width: 768px) {
+    ${props => props.isHorizontal ? `
+      width: 76px;
+      height: 8px;
+      left: -3px;
+      top: 36.5px;
+    ` : `
+      width: 8px;
+      height: 76px;
+      left: 36.5px;
+      top: -3px;
+    `}
+  }
+  
+  @media (max-width: 480px) {
+    ${props => props.isHorizontal ? `
+      width: 65px;
+      height: 6px;
+      left: -2.5px;
+      top: 31px;
+    ` : `
+      width: 6px;
+      height: 65px;
+      left: 31px;
+      top: -2.5px;
+    `}
+  }
 `;
 
 interface BoardProps {

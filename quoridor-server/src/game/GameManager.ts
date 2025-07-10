@@ -116,34 +116,41 @@ export class GameManager {
             startTime: Date.now()
         };
 
+        // 랜덤으로 플레이어 순서 결정
+        const isPlayer1First = Math.random() < 0.5;
+        const firstPlayer = isPlayer1First ? player1 : player2;
+        const secondPlayer = isPlayer1First ? player2 : player1;
+
+        console.log(`🎲 플레이어 순서 랜덤 결정: ${(firstPlayer as any).userId} = player1, ${(secondPlayer as any).userId} = player2`);
+
         // 플레이어 설정
-        room.players.set(player1.id, {
-            socket: player1,
-            userId: (player1 as any).userId,
+        room.players.set(firstPlayer.id, {
+            socket: firstPlayer,
+            userId: (firstPlayer as any).userId,
             playerId: 'player1',
-            rating: (player1 as any).rating
+            rating: (firstPlayer as any).rating
         });
 
-        room.players.set(player2.id, {
-            socket: player2,
-            userId: (player2 as any).userId,
+        room.players.set(secondPlayer.id, {
+            socket: secondPlayer,
+            userId: (secondPlayer as any).userId,
             playerId: 'player2',
-            rating: (player2 as any).rating
+            rating: (secondPlayer as any).rating
         });
 
         // 방에 참가
-        player1.join(roomId);
-        player2.join(roomId);
+        firstPlayer.join(roomId);
+        secondPlayer.join(roomId);
 
         this.rooms.set(roomId, room);
 
         // 플레이어에게 게임 시작 알림 (게임 상태도 함께 전송)
-        player1.emit('gameStarted', { 
+        firstPlayer.emit('gameStarted', { 
             playerId: 'player1', 
             roomId,
             gameState 
         });
-        player2.emit('gameStarted', { 
+        secondPlayer.emit('gameStarted', { 
             playerId: 'player2', 
             roomId,
             gameState 
@@ -155,7 +162,7 @@ export class GameManager {
         // 턴 타이머 시작
         this.startTurnTimer(roomId);
 
-        console.log(`게임 시작: ${roomId}`);
+        console.log(`게임 시작: ${roomId} (Player1: ${(firstPlayer as any).userId}, Player2: ${(secondPlayer as any).userId})`);
     }
 
     private handlePlayerMove(socket: Socket, newPosition: Position) {
