@@ -78,7 +78,7 @@ const Login = () => {
 
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
-      navigate('/game');
+      navigate('/menu');
     } catch (error: any) {
       if (error.response?.status === 401) {
         setError('이메일 또는 비밀번호가 올바르지 않습니다.');

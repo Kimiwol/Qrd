@@ -1,0 +1,76 @@
+export interface Position {
+    x: number;
+    y: number;
+}
+
+export interface Player {
+    id: string;
+    position: Position;
+    wallsLeft: number;
+}
+
+export interface Wall {
+    position: Position;
+    isHorizontal: boolean;
+}
+
+export interface GameState {
+    players: Player[];
+    walls: Wall[];
+    currentTurn: string;
+}
+
+// 게임 모드 타입
+export enum GameMode {
+    RANKED = 'ranked',
+    CUSTOM = 'custom'
+}
+
+// 방 상태
+export enum RoomStatus {
+    WAITING = 'waiting',
+    IN_PROGRESS = 'in_progress',
+    FINISHED = 'finished'
+}
+
+// 사용자 프로필
+export interface UserProfile {
+    id: string;
+    username: string;
+    email: string;
+    rating: number;
+    gamesPlayed: number;
+    gamesWon: number;
+    createdAt: Date;
+}
+
+// 방 정보
+export interface RoomInfo {
+    id: string;
+    code: string;
+    mode: GameMode;
+    host: string;
+    players: string[];
+    status: RoomStatus;
+    maxPlayers: number;
+    createdAt: Date;
+}
+
+// 매칭 요청
+export interface MatchmakingRequest {
+    userId: string;
+    rating: number;
+    gameMode: GameMode;
+}
+
+// 게임 결과
+export interface GameResult {
+    winner: string;
+    loser: string;
+    mode: GameMode;
+    duration: number;
+    ratingChange?: {
+        winner: number;
+        loser: number;
+    };
+}

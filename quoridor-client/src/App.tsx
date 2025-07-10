@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './components/Login';
 import Register from './components/Register';
+import MainMenu from './components/MainMenu';
 import Game from './components/Game';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -19,6 +20,14 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route
+          path="/menu"
+          element={
+            <ProtectedRoute>
+              <MainMenu />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/game"
           element={
             <ProtectedRoute>
@@ -26,7 +35,7 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={<Navigate to="/menu" replace />} />
       </Routes>
     </Router>
   );

@@ -5,8 +5,11 @@ export interface IUser extends mongoose.Document {
     username: string;
     password: string;
     email: string;
+    rating: number;
     gamesPlayed: number;
     gamesWon: number;
+    createdAt: Date;
+    updatedAt: Date;
     comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
@@ -29,6 +32,10 @@ const userSchema = new mongoose.Schema<IUser>({
         required: true,
         unique: true,
         trim: true
+    },
+    rating: {
+        type: Number,
+        default: 1200 // 기본 레이팅
     },
     gamesPlayed: {
         type: Number,

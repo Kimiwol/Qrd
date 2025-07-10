@@ -96,7 +96,7 @@ const Register = () => {
 
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
-      navigate('/game');
+      navigate('/menu');
     } catch (error: any) {
       if (error.response?.data?.code === 11000) {
         if (error.response.data.keyPattern?.email) {

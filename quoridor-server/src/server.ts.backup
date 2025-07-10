@@ -1,0 +1,781 @@
+import express from 'express';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+import cors from 'cors';
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+
+// 라우트 import
+import authRoutes from './routes/auth';
+
+// 게임 매니저 import
+import { GameManager } from './game/GameManager';
+
+dotenv.config();
+
+const app = express();
+const httpServer = createServer(app);
+
+// CORS 설정
+const allowedOrigins = [
+    "https://qrdonline.netlify.app",
+    ...(process.env.NODE_ENV === 'development' ? ["http://localhost:3000"] : [])
+];
+
+if (process.env.CLIENT_URL && !allowedOrigins.includes(process.env.CLIENT_URL)) {
+    allowedOrigins.push(process.env.CLIENT_URL);
+}
+
+const io = new Server(httpServer, {
+    cors: {
+        origin: allowedOrigins,
+        methods: ["GET", "POST"],
+        credentials: true,
+        allowedHeaders: ["Content-Type", "Authorization"]
+    },
+    transports: ['websocket', 'polling']
+});
+
+app.use(cors({
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+}));
+app.use(express.json());
+
+// MongoDB 연결
+if (process.env.MONGODB_URI) {
+    console.log('MongoDB 연결 시도 중...');
+    
+    mongoose.connect(process.env.MONGODB_URI)
+        .then(() => {
+            console.log('✅ MongoDB 연결 성공!');
+            console.log('연결 상태:', mongoose.connection.readyState);
+        })
+        .catch(err => {
+            console.error('❌ MongoDB 연결 실패:', err.message);
+            console.error('에러 코드:', err.code);
+            console.error('에러 이름:', err.codeName);
+            console.log('🎮 인증 기능 없이 게임만 진행 가능합니다.');
+        });
+} else {
+    console.log('MongoDB URI가 설정되지 않았습니다. 인증 기능 없이 게임만 진행 가능합니다.');
+}
+
+// 라우트 설정
+app.use('/api', authRoutes);
+
+// 게임 매니저 초기화
+const gameManager = new GameManager(io);
+
+// 서버 시작
+const PORT = process.env.PORT || 4000;
+httpServer.listen(PORT, () => {
+    console.log(`🚀 서버가 포트 ${PORT}에서 실행 중입니다`);
+    console.log(`🎮 게임 매칭 시스템이 활성화되었습니다`);
+});
+
+dotenv.config();
+
+const app = express();
+const httpServer = createServer(app);
+
+const allowedOrigins = [
+    "https://qrdonline.netlify.app",
+    ...(process.env.NODE_ENV === 'development' ? ["http://localhost:3000"] : [])
+];
+
+if (process.env.CLIENT_URL && !allowedOrigins.includes(process.env.CLIENT_URL)) {
+    allowedOrigins.push(process.env.CLIENT_URL);
+}
+
+const io = new Server(httpServer, {
+    cors: {
+        origin: allowedOrigins,
+        methods: ["GET", "POST"],
+        credentials: true,
+        allowedHeaders: ["Content-Type", "Authorization"]
+    },
+    transports: ['websocket', 'polling']
+});
+
+app.use(cors({
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+}));
+app.use(express.json());
+
+// MongoDB 연결
+if (process.env.MONGODB_URI) {
+    console.log('MongoDB 연결 시도 중...');
+    
+    mongoose.connect(process.env.MONGODB_URI, {
+        serverSelectionTimeoutMS: 5000, // 5초 타임아웃
+        socketTimeoutMS: 45000,
+    })
+        .then(() => {
+            console.log('✅ MongoDB 연결 성공!');
+            console.log('데이터베이스:', mongoose.connection.db.databaseName);
+        })
+        .catch(err => {
+            console.error('❌ MongoDB 연결 실패:');
+            console.error('에러 코드:', err.code);
+            console.error('에러 메시지:', err.message);
+            
+            if (err.code === 8000) {
+                console.log('💡 해결 방법:');
+                console.log('1. MongoDB Atlas에서 사용자 비밀번호 확인');
+                console.log('2. IP 화이트리스트에 현재 IP 추가');
+                console.log('3. 클러스터가 활성화되어 있는지 확인');
+            }
+            
+            console.log('⚠️ 인증 기능 없이 게임만 진행 가능합니다.');
+        });
+    
+    // 연결 상태 모니터링
+    mongoose.connection.on('connected', () => {
+        console.log('MongoDB 연결 상태: 연결됨');
+    });
+    
+    mongoose.connection.on('error', (err) => {
+        console.error('MongoDB 연결 에러:', err);
+    });
+    
+    mongoose.connection.on('disconnected', () => {
+        console.log('MongoDB 연결 상태: 연결 끊김');
+    });
+} else {
+    console.log('MongoDB URI가 설정되지 않았습니다. 인증 기능 없이 게임만 진행 가능합니다.');
+}
+
+// 인증 라우트
+app.post('/api/register', async (req, res) => {
+    try {
+        const { username, email, password } = req.body;
+
+        // 입력값 검증
+        if (!username || !email || !password) {
+            return res.status(400).send({ 
+                message: '모든 필드를 입력해주세요.' 
+            });
+        }
+
+        if (username.length < 3 || username.length > 20) {
+            return res.status(400).send({ 
+                message: '사용자 이름은 3-20자 사이여야 합니다.' 
+            });
+        }
+
+        if (password.length < 6) {
+            return res.status(400).send({ 
+                message: '비밀번호는 최소 6자 이상이어야 합니다.' 
+            });
+        }
+
+        // 이메일 형식 검증
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).send({ 
+                message: '올바른 이메일 형식이 아닙니다.' 
+            });
+        }
+
+        // 중복 체크
+        const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+        if (existingUser) {
+            if (existingUser.email === email) {
+                return res.status(400).send({ 
+                    message: '이미 사용 중인 이메일입니다.',
+                    code: 11000,
+                    keyPattern: { email: 1 }
+                });
+            }
+            if (existingUser.username === username) {
+                return res.status(400).send({ 
+                    message: '이미 사용 중인 사용자 이름입니다.',
+                    code: 11000,
+                    keyPattern: { username: 1 }
+                });
+            }
+        }
+
+        const user = new User({ username, email, password });
+        await user.save();
+        
+        const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET!);
+        res.status(201).send({ user, token });
+    } catch (error) {
+        console.error('Registration error:', error);
+        res.status(400).send({ 
+            message: '회원가입에 실패했습니다. 다시 시도해주세요.' 
+        });
+    }
+});
+
+app.post('/api/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        // 입력값 검증
+        if (!email || !password) {
+            return res.status(400).send({ 
+                error: '이메일과 비밀번호를 모두 입력해주세요.' 
+            });
+        }
+
+        // MongoDB 연결이 없을 때 임시 응답
+        if (mongoose.connection.readyState !== 1) {
+            // 임시 사용자 객체 생성
+            const tempUser = {
+                _id: 'temp_' + Date.now(),
+                username: email.split('@')[0], // 이메일에서 사용자명 추출
+                email
+            };
+            const token = jwt.sign({ _id: tempUser._id }, process.env.JWT_SECRET || 'temp_secret');
+            return res.send({ 
+                user: tempUser, 
+                token,
+                message: '임시 계정으로 로그인되었습니다. (MongoDB 연결 필요)'
+            });
+        }
+
+        const user = await User.findOne({ email });
+        
+        if (!user) {
+            return res.status(401).send({ 
+                error: '이메일 또는 비밀번호가 올바르지 않습니다.' 
+            });
+        }
+
+        const isMatch = await user.comparePassword(password);
+        if (!isMatch) {
+            return res.status(401).send({ 
+                error: '이메일 또는 비밀번호가 올바르지 않습니다.' 
+            });
+        }
+        
+        const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET!);
+        res.send({ user, token });
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(400).send({ 
+            error: '로그인에 실패했습니다. 다시 시도해주세요.' 
+        });
+    }
+});
+
+// 게임 상태 초기화를 반환하는 함수
+const getInitialGameState = (): GameState => ({
+    players: [
+        { id: 'player1', position: { x: 4, y: 0 }, wallsLeft: 10 },
+        { id: 'player2', position: { x: 4, y: 8 }, wallsLeft: 10 }
+    ],
+    walls: [],
+    currentTurn: 'player1'
+});
+
+// 게임 매칭 시스템
+interface GameRoom {
+    id: string;
+    players: Map<string, {socketId: string; userId: string; username?: string}>;
+    gameState: GameState;
+    isGameStarted: boolean;
+    isGamePaused: boolean;
+    turnTimer: NodeJS.Timeout | null;
+}
+
+const gameRooms = new Map<string, GameRoom>();
+const waitingPlayers = new Set<string>(); // 매칭을 기다리는 플레이어들
+const playerToRoom = new Map<string, string>(); // 소켓ID -> 룸ID 매핑
+
+const TURN_TIME_LIMIT = 60;
+
+// 새 게임방 생성
+const createGameRoom = (): GameRoom => {
+    const roomId = 'room_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    const room: GameRoom = {
+        id: roomId,
+        players: new Map(),
+        gameState: getInitialGameState(),
+        isGameStarted: false,
+        isGamePaused: false,
+        turnTimer: null
+    };
+    gameRooms.set(roomId, room);
+    return room;
+};
+
+// 플레이어 매칭
+const findOrCreateRoom = (socketId: string, userId: string, username?: string): GameRoom => {
+    // 기존에 대기 중인 방이 있는지 확인
+    for (const room of gameRooms.values()) {
+        if (room.players.size === 1 && !room.isGameStarted) {
+            // 대기 중인 방에 참가
+            const playerId = 'player2';
+            room.players.set(playerId, { socketId, userId, username });
+            playerToRoom.set(socketId, room.id);
+            return room;
+        }
+    }
+    
+    // 새 방 생성
+    const room = createGameRoom();
+    const playerId = 'player1';
+    room.players.set(playerId, { socketId, userId, username });
+    playerToRoom.set(socketId, room.id);
+    return room;
+};
+
+// 게임 시작
+const startGame = (room: GameRoom) => {
+    if (room.players.size === 2 && !room.isGameStarted) {
+        room.isGameStarted = true;
+        room.gameState = getInitialGameState();
+        
+        // 모든 플레이어에게 게임 시작 알림
+        for (const [playerId, playerData] of room.players.entries()) {
+            const socket = io.sockets.sockets.get(playerData.socketId);
+            if (socket) {
+                socket.emit('playerAssigned', playerId);
+                socket.emit('gameState', room.gameState);
+                socket.emit('gameStarted', {
+                    message: '게임이 시작되었습니다!',
+                    players: Array.from(room.players.entries()).map(([id, data]) => ({
+                        id,
+                        username: data.username || 'Anonymous'
+                    }))
+                });
+            }
+        }
+        
+        // 턴 타이머 시작
+        startTurnTimer(room);
+        console.log(`게임 시작: ${room.id}`);
+    }
+};
+
+// 턴 타이머
+const startTurnTimer = (room: GameRoom) => {
+    if (room.turnTimer) {
+        clearTimeout(room.turnTimer);
+    }
+    
+    room.turnTimer = setTimeout(() => {
+        if (!room.isGamePaused && room.gameState.currentTurn && room.isGameStarted) {
+            // 턴 시간 초과 시 다음 플레이어로 넘김
+            room.gameState.currentTurn = room.gameState.currentTurn === 'player1' ? 'player2' : 'player1';
+            
+            // 방의 모든 플레이어에게 상태 전송
+            for (const playerData of room.players.values()) {
+                const socket = io.sockets.sockets.get(playerData.socketId);
+                if (socket) {
+                    socket.emit('gameState', room.gameState);
+                    socket.emit('turnTimedOut', '시간 초과로 턴이 넘어갔습니다.');
+                }
+            }
+            
+            startTurnTimer(room);
+        }
+    }, TURN_TIME_LIMIT * 1000);
+};
+
+// Socket.io 연결 처리
+io.use(async (socket, next) => {
+    try {
+        const token = socket.handshake.auth.token;
+        if (!token) {
+            throw new Error('인증이 필요합니다.');
+        }
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'temp_secret') as { _id: string };
+        
+        // MongoDB 연결이 없을 때는 토큰만 검증
+        if (mongoose.connection.readyState !== 1) {
+            (socket as any).userId = decoded._id;
+            next();
+            return;
+        }
+        
+        const user = await User.findById(decoded._id);
+        
+        if (!user) {
+            throw new Error('사용자를 찾을 수 없습니다.');
+        }
+
+        (socket as any).userId = user._id;
+        next();
+    } catch (error) {
+        next(new Error('인증이 필요합니다.'));
+    }
+});
+
+io.on('connection', async (socket) => {
+    console.log('사용자 연결됨:', socket.id);
+    const userId = (socket as any).userId;
+    
+    // MongoDB 연결이 있을 때 사용자 정보 조회
+    let user = null;
+    if (mongoose.connection.readyState === 1) {
+        user = await User.findById(userId);
+        if (!user) {
+            socket.disconnect();
+            return;
+        }
+    }
+
+    // 게임방 찾기 또는 생성
+    const room = findOrCreateRoom(socket.id, userId, user?.username);
+    
+    console.log(`플레이어 ${socket.id}가 방 ${room.id}에 입장`);
+    
+    // 대기 상태 알림
+    if (room.players.size === 1) {
+        socket.emit('waitingForPlayer', {
+            message: '상대방을 기다리는 중...',
+            playersCount: room.players.size
+        });
+    } else if (room.players.size === 2) {
+        // 게임 시작
+        startGame(room);
+    }
+
+    // 플레이어 이동 처리
+    socket.on('move', (newPosition: Position) => {
+        const room = gameRooms.get(playerToRoom.get(socket.id)!);
+        if (!room || !room.isGameStarted || room.isGamePaused) return;
+
+        // 현재 플레이어 ID 찾기
+        let currentPlayerId: string | null = null;
+        for (const [playerId, playerData] of room.players.entries()) {
+            if (playerData.socketId === socket.id) {
+                currentPlayerId = playerId;
+                break;
+            }
+        }
+
+        if (currentPlayerId !== room.gameState.currentTurn) return;
+
+        const currentPlayer = room.gameState.players.find(p => p.id === room.gameState.currentTurn);
+        if (currentPlayer && isValidMove(currentPlayer, newPosition, room.gameState)) {
+            // 이동 적용
+            currentPlayer.position = newPosition;
+            
+            // 승리 조건 확인
+            if ((currentPlayer.id === 'player1' && newPosition.y === 8) ||
+                (currentPlayer.id === 'player2' && newPosition.y === 0)) {
+                // 게임 종료
+                if (room.turnTimer) {
+                    clearTimeout(room.turnTimer);
+                }
+                
+                // 승리 알림
+                for (const playerData of room.players.values()) {
+                    const playerSocket = io.sockets.sockets.get(playerData.socketId);
+                    if (playerSocket) {
+                        playerSocket.emit('gameOver', {
+                            winner: currentPlayer.id,
+                            message: `${currentPlayer.id}가 승리했습니다!`
+                        });
+                    }
+                }
+                
+                // 게임 리셋
+                room.gameState = getInitialGameState();
+                room.isGameStarted = false;
+            } else {
+                // 턴 변경
+                room.gameState.currentTurn = room.gameState.currentTurn === 'player1' ? 'player2' : 'player1';
+                startTurnTimer(room);
+            }
+            
+            // 게임 상태 업데이트 전송
+            for (const playerData of room.players.values()) {
+                const playerSocket = io.sockets.sockets.get(playerData.socketId);
+                if (playerSocket) {
+                    playerSocket.emit('gameState', room.gameState);
+                }
+            }
+        }
+    });
+
+    // 벽 설치 처리
+    socket.on('placeWall', ({ position, isHorizontal }: { position: Position; isHorizontal: boolean }) => {
+        const room = gameRooms.get(playerToRoom.get(socket.id)!);
+        if (!room || !room.isGameStarted || room.isGamePaused) return;
+
+        // 현재 플레이어 ID 찾기
+        let currentPlayerId: string | null = null;
+        for (const [playerId, playerData] of room.players.entries()) {
+            if (playerData.socketId === socket.id) {
+                currentPlayerId = playerId;
+                break;
+            }
+        }
+
+        if (currentPlayerId !== room.gameState.currentTurn) return;
+
+        const currentPlayer = room.gameState.players.find(p => p.id === room.gameState.currentTurn);
+        const newWall: Wall = { position, isHorizontal };
+
+        if (currentPlayer && isValidWallPlacement(newWall, room.gameState, currentPlayer)) {
+            const tempWalls = [...room.gameState.walls, newWall];
+            const allPlayersHavePath = room.gameState.players.every(p => hasPathToGoal(p, tempWalls));
+
+            if (allPlayersHavePath) {
+                room.gameState.walls.push(newWall);
+                currentPlayer.wallsLeft--;
+                room.gameState.currentTurn = room.gameState.currentTurn === 'player1' ? 'player2' : 'player1';
+                startTurnTimer(room);
+                
+                // 게임 상태 업데이트 전송
+                for (const playerData of room.players.values()) {
+                    const playerSocket = io.sockets.sockets.get(playerData.socketId);
+                    if (playerSocket) {
+                        playerSocket.emit('gameState', room.gameState);
+                    }
+                }
+            }
+        }
+    });
+
+    // 게임 재시작 요청 처리
+    socket.on('restartGame', () => {
+        const room = gameRooms.get(playerToRoom.get(socket.id)!);
+        if (!room || room.players.size !== 2) return;
+
+        if (room.turnTimer) {
+            clearTimeout(room.turnTimer);
+        }
+        
+        room.gameState = getInitialGameState();
+        room.isGameStarted = true;
+        room.isGamePaused = false;
+        
+        // 모든 플레이어에게 재시작 알림
+        for (const playerData of room.players.values()) {
+            const playerSocket = io.sockets.sockets.get(playerData.socketId);
+            if (playerSocket) {
+                playerSocket.emit('gameState', room.gameState);
+                playerSocket.emit('gameRestarted');
+            }
+        }
+        
+        startTurnTimer(room);
+    });
+
+    // 연결 끊김 처리
+    socket.on('disconnect', () => {
+        console.log('사용자 연결 끊김:', socket.id);
+        
+        const roomId = playerToRoom.get(socket.id);
+        if (roomId) {
+            const room = gameRooms.get(roomId);
+            if (room) {
+                // 플레이어 제거
+                for (const [playerId, playerData] of room.players.entries()) {
+                    if (playerData.socketId === socket.id) {
+                        room.players.delete(playerId);
+                        break;
+                    }
+                }
+                
+                // 타이머 정리
+                if (room.turnTimer) {
+                    clearTimeout(room.turnTimer);
+                }
+                
+                if (room.players.size === 0) {
+                    // 방이 비면 삭제
+                    gameRooms.delete(roomId);
+                } else {
+                    // 남은 플레이어에게 알림
+                    room.isGamePaused = true;
+                    for (const playerData of room.players.values()) {
+                        const playerSocket = io.sockets.sockets.get(playerData.socketId);
+                        if (playerSocket) {
+                            playerSocket.emit('gamePaused', '상대방이 연결을 끊었습니다. 재접속을 기다리는 중...');
+                        }
+                    }
+                }
+            }
+            playerToRoom.delete(socket.id);
+        }
+    });
+});
+
+const PORT = process.env.PORT || 4000;
+httpServer.listen(PORT, () => {
+    console.log(`서버가 포트 ${PORT}에서 실행 중입니다`);
+});
+
+// 이동이 벽에 막혀있는지 확인하는 함수
+const isBlockedByWall = (from: Position, to: Position, walls: Wall[]): boolean => {
+    const minX = Math.min(from.x, to.x);
+    const maxX = Math.max(from.x, to.x);
+    const minY = Math.min(from.y, to.y);
+    const maxY = Math.max(from.y, to.y);
+
+    return walls.some(wall => {
+        if (wall.isHorizontal) {
+            // 수평 벽은 위아래 이동을 막음
+            return wall.position.y === minY &&
+                   wall.position.x <= maxX &&
+                   from.y !== to.y;
+        } else {
+            // 수직 벽은 좌우 이동을 막음
+            return wall.position.x === minX &&
+                   wall.position.y <= maxY &&
+                   from.x !== to.x;
+        }
+    });
+};
+
+// 이동이 유효한지 확인하는 함수
+const isValidMove = (player: Player, newPosition: Position, gameState: GameState): boolean => {
+    // 보드 범위 체크
+    if (newPosition.x < 0 || newPosition.x > 8 || 
+        newPosition.y < 0 || newPosition.y > 8) {
+        return false;
+    }
+
+    const dx = Math.abs(newPosition.x - player.position.x);
+    const dy = Math.abs(newPosition.y - player.position.y);
+    
+    // 다른 플레이어의 위치 확인
+    const otherPlayer = gameState.players.find(p => p.id !== player.id);
+    
+    if (!otherPlayer) return false;
+
+    // 기본 이동: 한 칸
+    if ((dx === 1 && dy === 0) || (dx === 0 && dy === 1)) {
+        // 이동하려는 칸에 다른 플레이어가 있는지 확인
+        if (otherPlayer.position.x === newPosition.x && 
+            otherPlayer.position.y === newPosition.y) {
+            return false;
+        }
+        // 벽에 막혀있는지 확인
+        return !isBlockedByWall(player.position, newPosition, gameState.walls);
+    }
+    
+    // 플레이어 뛰어넘기
+    if ((dx === 2 && dy === 0) || (dx === 0 && dy === 2)) {
+        const midX = (player.position.x + newPosition.x) / 2;
+        const midY = (player.position.y + newPosition.y) / 2;
+        
+        // 중간에 다른 플레이어가 있는지 확인
+        if (otherPlayer.position.x === midX && otherPlayer.position.y === midY) {
+            // 뛰어넘으려는 방향에 벽이 없는지 확인
+            return !isBlockedByWall(player.position, {x: midX, y: midY}, gameState.walls) &&
+                   !isBlockedByWall({x: midX, y: midY}, newPosition, gameState.walls);
+        }
+    }
+    
+    return false;
+};
+
+// 벽 설치가 유효한지 확인하는 함수
+const isValidWallPlacement = (
+    wall: Wall, 
+    gameState: GameState, 
+    player: Player
+): boolean => {
+    // 벽이 남아있는지 확인
+    if (player.wallsLeft <= 0) {
+        return false;
+    }
+
+    // 벽이 보드 범위 안에 있는지 확인
+    // 가로벽은 y < 8, x < 7
+    // 세로벽은 y < 7, x < 8
+    if (wall.isHorizontal) {
+        if (wall.position.x < 0 || wall.position.x > 7 || 
+            wall.position.y < 0 || wall.position.y > 7) {
+            return false;
+        }
+    } else {
+        if (wall.position.x < 0 || wall.position.x > 7 || 
+            wall.position.y < 0 || wall.position.y > 7) {
+            return false;
+        }
+    }
+
+    // 이미 설치된 벽과 겹치는지 확인
+    const isOverlapping = gameState.walls.some(existingWall => {
+        if (wall.isHorizontal === existingWall.isHorizontal) {
+            return wall.position.x === existingWall.position.x && 
+                   wall.position.y === existingWall.position.y;
+        }
+        // 교차 지점에서 벽이 겹치는 경우 체크
+        if (wall.isHorizontal) {
+            return existingWall.position.x === wall.position.x &&
+                   existingWall.position.y === wall.position.y;
+        } else {
+            return existingWall.position.x === wall.position.x &&
+                   existingWall.position.y === wall.position.y;
+        }
+    });
+
+    if (isOverlapping) {
+        return false;
+    }
+
+    return true;
+};
+
+// 경로가 존재하는지 확인하는 함수 (BFS 사용)
+const hasPathToGoal = (player: Player, walls: Wall[]): boolean => {
+    const visited = new Set<string>();
+    const queue: Position[] = [player.position];
+    const targetY = player.id === 'player1' ? 8 : 0;
+
+    while (queue.length > 0) {
+        const pos = queue.shift()!;
+        const key = `${pos.x},${pos.y}`;
+
+        if (pos.y === targetY) {
+            return true;
+        }
+
+        if (visited.has(key)) {
+            continue;
+        }
+
+        visited.add(key);
+
+        // 상하좌우 이동 가능한 위치 확인
+        const moves = [
+            { x: pos.x, y: pos.y - 1 }, // 위
+            { x: pos.x, y: pos.y + 1 }, // 아래
+            { x: pos.x - 1, y: pos.y }, // 왼쪽
+            { x: pos.x + 1, y: pos.y }  // 오른쪽
+        ];
+
+        for (const move of moves) {
+            if (move.x < 0 || move.x > 8 || move.y < 0 || move.y > 8) {
+                continue;
+            }
+
+            // 벽에 막혀있는지 확인
+            const isBlocked = walls.some(wall => {
+                if (wall.isHorizontal) {
+                    return wall.position.y === Math.min(pos.y, move.y) &&
+                           pos.x === move.x &&
+                           wall.position.x <= pos.x;
+                } else {
+                    return wall.position.x === Math.min(pos.x, move.x) &&
+                           pos.y === move.y &&
+                           wall.position.y <= pos.y;
+                }
+            });
+
+            if (!isBlocked) {
+                queue.push(move);
+            }
+        }
+    }
+
+    return false;
+};
