@@ -3,25 +3,31 @@ import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 import { User } from '../models/User';
 import { GameLogic } from './GameLogic';
-import { GameState, Position, Wall } from '../types';
+import { RatingSystem } from './RatingSystem';
+import { MatchmakingSystem } from './MatchmakingSystem';
+import { GameState, Position, Wall, GameMode, GameResult, MatchmakingRequest } from '../types';
 
 interface Room {
     id: string;
-    players: Map<string, { socket: Socket; userId: string; playerId: string }>;
+    mode: GameMode;
+    players: Map<string, { socket: Socket; userId: string; playerId: string; rating?: number }>;
     gameState: GameState;
     turnTimer: NodeJS.Timeout | null;
     isGameActive: boolean;
+    startTime: number;
 }
 
 export class GameManager {
     private io: Server;
     private rooms = new Map<string, Room>();
     private waitingPlayers: Socket[] = [];
+    private matchmakingSystem = new MatchmakingSystem();
     private readonly TURN_TIME_LIMIT = 60;
 
     constructor(io: Server) {
         this.io = io;
         this.setupSocketHandlers();
+        this.startMatchmakingLoop();
     }
 
     private setupSocketHandlers() {
@@ -55,8 +61,10 @@ export class GameManager {
             }
         });
 
-        this.io.on('connection', (socket) => {
-            console.log('사용자 연결됨:', socket.id);
+        this.io.on('connection', async (socket) => {
+            // 사용자 레이팅 정보 로드
+            await this.loadUserRating(socket);
+            
             this.handlePlayerConnection(socket);
         });
     }
@@ -64,13 +72,18 @@ export class GameManager {
     private handlePlayerConnection(socket: Socket) {
         const userId = (socket as any).userId;
 
-        // 매칭 대기열에 추가
-        this.addToWaitingQueue(socket);
-
         // 게임 이벤트 핸들러 설정
         socket.on('move', (data) => this.handlePlayerMove(socket, data));
         socket.on('placeWall', (data) => this.handleWallPlacement(socket, data));
         socket.on('restartGame', () => this.handleGameRestart(socket));
+        
+        // 랭크 시스템 이벤트 핸들러
+        socket.on('joinRankedQueue', () => this.handleJoinRankedQueue(socket));
+        socket.on('joinCustomQueue', () => this.handleJoinCustomQueue(socket));
+        socket.on('leaveQueue', () => this.handleLeaveQueue(socket));
+        socket.on('getLeaderboard', (callback) => this.handleGetLeaderboard(callback));
+        socket.on('getRating', (callback) => this.handleGetRating(socket, callback));
+        
         socket.on('disconnect', () => this.handlePlayerDisconnect(socket));
 
         console.log(`플레이어 ${userId} 매칭 대기 중...`);
@@ -88,29 +101,33 @@ export class GameManager {
         }
     }
 
-    private createGame(player1: Socket, player2: Socket) {
+    private createGame(player1: Socket, player2: Socket, mode: GameMode = GameMode.CUSTOM) {
         const roomId = `room_${Date.now()}`;
         const gameState = GameLogic.getInitialGameState();
 
         const room: Room = {
             id: roomId,
+            mode,
             players: new Map(),
             gameState,
             turnTimer: null,
-            isGameActive: true
+            isGameActive: true,
+            startTime: Date.now()
         };
 
         // 플레이어 설정
         room.players.set(player1.id, {
             socket: player1,
             userId: (player1 as any).userId,
-            playerId: 'player1'
+            playerId: 'player1',
+            rating: (player1 as any).rating
         });
 
         room.players.set(player2.id, {
             socket: player2,
             userId: (player2 as any).userId,
-            playerId: 'player2'
+            playerId: 'player2',
+            rating: (player2 as any).rating
         });
 
         // 방에 참가
@@ -226,6 +243,11 @@ export class GameManager {
     }
 
     private handlePlayerDisconnect(socket: Socket) {
+        const userId = (socket as any).userId;
+        
+        // 모든 큐에서 제거
+        this.handleLeaveQueue(socket);
+        
         // 대기열에서 제거
         const waitingIndex = this.waitingPlayers.findIndex(p => p.id === socket.id);
         if (waitingIndex !== -1) {
@@ -250,8 +272,6 @@ export class GameManager {
                 this.rooms.delete(room.id);
             }
         }
-
-        console.log('플레이어 연결 끊김:', socket.id);
     }
 
     private startTurnTimer(roomId: string) {
@@ -276,12 +296,15 @@ export class GameManager {
         }, this.TURN_TIME_LIMIT * 1000);
     }
 
-    private endGame(room: Room, winnerId: string) {
+    private async endGame(room: Room, winnerId: string) {
         room.isGameActive = false;
         
         if (room.turnTimer) {
             clearTimeout(room.turnTimer);
         }
+
+        // 레이팅 업데이트 (랭크 게임인 경우)
+        await this.handleGameEnd(room, winnerId);
 
         this.io.to(room.id).emit('gameOver', winnerId);
         
@@ -299,5 +322,261 @@ export class GameManager {
             }
         }
         return null;
+    }
+
+    // 랭크 시스템 관련 메서드들
+    private async loadUserRating(socket: Socket): Promise<void> {
+        try {
+            const userId = (socket as any).userId;
+            if (mongoose.connection.readyState === 1) {
+                const user = await User.findById(userId);
+                if (user) {
+                    (socket as any).rating = user.rating;
+                    (socket as any).rank = RatingSystem.getRankByRating(user.rating);
+                }
+            } else {
+                (socket as any).rating = 1200; // 기본 레이팅
+                (socket as any).rank = RatingSystem.getRankByRating(1200);
+            }
+        } catch (error) {
+            console.error('레이팅 로드 실패:', error);
+            (socket as any).rating = 1200;
+            (socket as any).rank = RatingSystem.getRankByRating(1200);
+        }
+    }
+
+    private async handleJoinRankedQueue(socket: Socket): Promise<void> {
+        const userId = (socket as any).userId;
+        const rating = (socket as any).rating || 1200;
+
+        const request: MatchmakingRequest = {
+            userId,
+            rating,
+            gameMode: GameMode.RANKED
+        };
+
+        this.matchmakingSystem.addToQueue(request);
+        socket.emit('queueJoined', { 
+            mode: GameMode.RANKED, 
+            queueSize: this.matchmakingSystem.getQueueSize(GameMode.RANKED) 
+        });
+        socket.emit('notification', { 
+            type: 'info', 
+            message: '랭크 게임 매칭을 시작합니다...', 
+            duration: 3000 
+        });
+    }
+
+    private async handleJoinCustomQueue(socket: Socket): Promise<void> {
+        const userId = (socket as any).userId;
+        const rating = (socket as any).rating || 1200;
+
+        const request: MatchmakingRequest = {
+            userId,
+            rating,
+            gameMode: GameMode.CUSTOM
+        };
+
+        this.matchmakingSystem.addToQueue(request);
+        socket.emit('queueJoined', { 
+            mode: GameMode.CUSTOM, 
+            queueSize: this.matchmakingSystem.getQueueSize(GameMode.CUSTOM) 
+        });
+        socket.emit('notification', { 
+            type: 'info', 
+            message: '일반 게임 매칭을 시작합니다...', 
+            duration: 3000 
+        });
+    }
+
+    private handleLeaveQueue(socket: Socket): void {
+        const userId = (socket as any).userId;
+        this.matchmakingSystem.removeFromQueue(userId, GameMode.RANKED);
+        this.matchmakingSystem.removeFromQueue(userId, GameMode.CUSTOM);
+        socket.emit('queueLeft');
+        socket.emit('notification', { 
+            type: 'info', 
+            message: '매칭 대기를 취소했습니다.', 
+            duration: 2000 
+        });
+    }
+
+    private async handleGetLeaderboard(callback: (data: any) => void): Promise<void> {
+        try {
+            if (mongoose.connection.readyState !== 1) {
+                callback({ error: '데이터베이스 연결이 필요합니다.' });
+                return;
+            }
+
+            const topPlayers = await User.find({})
+                .sort({ rating: -1 })
+                .limit(100)
+                .select('username rating gamesPlayed gamesWon');
+
+            const leaderboard = topPlayers.map((user, index) => ({
+                rank: index + 1,
+                username: user.username,
+                rating: user.rating,
+                tier: RatingSystem.getRankByRating(user.rating),
+                gamesPlayed: user.gamesPlayed,
+                gamesWon: user.gamesWon,
+                winRate: user.gamesPlayed > 0 ? Math.round((user.gamesWon / user.gamesPlayed) * 100) : 0
+            }));
+
+            callback({ leaderboard });
+        } catch (error) {
+            console.error('리더보드 조회 실패:', error);
+            callback({ error: '리더보드를 불러올 수 없습니다.' });
+        }
+    }
+
+    private async handleGetRating(socket: Socket, callback: (data: any) => void): Promise<void> {
+        try {
+            const userId = (socket as any).userId;
+            const rating = (socket as any).rating || 1200;
+            const rank = RatingSystem.getRankByRating(rating);
+
+            if (mongoose.connection.readyState === 1) {
+                const user = await User.findById(userId);
+                if (user) {
+                    callback({
+                        rating: user.rating,
+                        rank: RatingSystem.getRankByRating(user.rating),
+                        gamesPlayed: user.gamesPlayed,
+                        gamesWon: user.gamesWon,
+                        winRate: user.gamesPlayed > 0 ? Math.round((user.gamesWon / user.gamesPlayed) * 100) : 0
+                    });
+                    return;
+                }
+            }
+
+            callback({
+                rating,
+                rank,
+                gamesPlayed: 0,
+                gamesWon: 0,
+                winRate: 0
+            });
+        } catch (error) {
+            console.error('레이팅 조회 실패:', error);
+            callback({ error: '레이팅 정보를 불러올 수 없습니다.' });
+        }
+    }
+
+    private startMatchmakingLoop(): void {
+        setInterval(() => {
+            // 랭크 매칭 처리
+            this.matchmakingSystem.processMatching(GameMode.RANKED, (match) => {
+                this.createRankedGame(match.player1, match.player2);
+            });
+
+            // 커스텀 매칭 처리
+            this.matchmakingSystem.processMatching(GameMode.CUSTOM, (match) => {
+                this.createCustomGame(match.player1, match.player2);
+            });
+        }, 1000); // 1초마다 매칭 시도
+    }
+
+    private createRankedGame(player1Request: MatchmakingRequest, player2Request: MatchmakingRequest): void {
+        // 소켓 찾기
+        const player1Socket = this.findSocketByUserId(player1Request.userId);
+        const player2Socket = this.findSocketByUserId(player2Request.userId);
+
+        if (player1Socket && player2Socket) {
+            // 매칭 성공 알림
+            player1Socket.emit('notification', { 
+                type: 'success', 
+                message: '랭크 게임 상대방을 찾았습니다!', 
+                duration: 3000 
+            });
+            player2Socket.emit('notification', { 
+                type: 'success', 
+                message: '랭크 게임 상대방을 찾았습니다!', 
+                duration: 3000 
+            });
+            
+            this.createGame(player1Socket, player2Socket, GameMode.RANKED);
+        }
+    }
+
+    private createCustomGame(player1Request: MatchmakingRequest, player2Request: MatchmakingRequest): void {
+        // 소켓 찾기
+        const player1Socket = this.findSocketByUserId(player1Request.userId);
+        const player2Socket = this.findSocketByUserId(player2Request.userId);
+
+        if (player1Socket && player2Socket) {
+            // 매칭 성공 알림
+            player1Socket.emit('notification', { 
+                type: 'success', 
+                message: '일반 게임 상대방을 찾았습니다!', 
+                duration: 3000 
+            });
+            player2Socket.emit('notification', { 
+                type: 'success', 
+                message: '일반 게임 상대방을 찾았습니다!', 
+                duration: 3000 
+            });
+            
+            this.createGame(player1Socket, player2Socket, GameMode.CUSTOM);
+        }
+    }
+
+    private findSocketByUserId(userId: string): Socket | null {
+        for (const [socketId, socket] of this.io.sockets.sockets) {
+            if ((socket as any).userId === userId) {
+                return socket;
+            }
+        }
+        return null;
+    }
+
+    private async handleGameEnd(room: Room, winnerId: string): Promise<void> {
+        const winnerPlayer = Array.from(room.players.values()).find(p => p.playerId === winnerId);
+        const loserPlayer = Array.from(room.players.values()).find(p => p.playerId !== winnerId);
+
+        if (!winnerPlayer || !loserPlayer) return;
+
+        // 랭크 게임인 경우 레이팅 업데이트
+        if (room.mode === GameMode.RANKED && mongoose.connection.readyState === 1) {
+            try {
+                const winnerRating = winnerPlayer.rating || 1200;
+                const loserRating = loserPlayer.rating || 1200;
+
+                const ratingResult = RatingSystem.calculateRating(winnerRating, loserRating);
+                const gameDuration = Date.now() - room.startTime;
+
+                // 데이터베이스 업데이트
+                await User.findByIdAndUpdate(winnerPlayer.userId, {
+                    $inc: { gamesPlayed: 1, gamesWon: 1 },
+                    rating: ratingResult.winner.newRating
+                });
+
+                await User.findByIdAndUpdate(loserPlayer.userId, {
+                    $inc: { gamesPlayed: 1 },
+                    rating: ratingResult.loser.newRating
+                });
+
+                // 클라이언트에 레이팅 변화 알림
+                winnerPlayer.socket.emit('ratingUpdate', ratingResult.winner);
+                loserPlayer.socket.emit('ratingUpdate', ratingResult.loser);
+
+                // 승부 결과 팝업 알림
+                winnerPlayer.socket.emit('notification', { 
+                    type: 'success', 
+                    message: `승리! 레이팅: ${ratingResult.winner.oldRating} → ${ratingResult.winner.newRating} (${ratingResult.winner.change >= 0 ? '+' : ''}${ratingResult.winner.change})`, 
+                    duration: 5000 
+                });
+                loserPlayer.socket.emit('notification', { 
+                    type: 'info', 
+                    message: `패배. 레이팅: ${ratingResult.loser.oldRating} → ${ratingResult.loser.newRating} (${ratingResult.loser.change})`, 
+                    duration: 5000 
+                });
+
+            } catch (error) {
+                // 에러 발생 시 팝업으로 알림
+                winnerPlayer.socket.emit('notification', { type: 'error', message: '레이팅 업데이트에 실패했습니다.' });
+                loserPlayer.socket.emit('notification', { type: 'error', message: '레이팅 업데이트에 실패했습니다.' });
+            }
+        }
     }
 }

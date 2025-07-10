@@ -168,7 +168,14 @@
   font-size: 1.8rem;
 }
 
-.ranked-card {
+.match-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.match-option {
   background: rgba(255, 255, 255, 0.95);
   border-radius: 16px;
   padding: 2rem;
@@ -176,10 +183,24 @@
   text-align: center;
 }
 
-.ranked-card p {
+.match-option h3 {
+  color: #333;
+  margin: 0 0 1rem 0;
+  font-size: 1.4rem;
+}
+
+.match-option p {
   color: #666;
-  font-size: 1.1rem;
+  font-size: 1rem;
   margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+  .match-container {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
 }
 
 .match-btn {
@@ -445,4 +466,194 @@
   .leaderboard-table {
     font-size: 0.9rem;
   }
+}
+
+/* 알림 팝업 스타일 */
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  color: white;
+  font-weight: 500;
+  z-index: 1000;
+  animation: slideIn 0.3s ease-out;
+  max-width: 300px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.notification-success {
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+}
+
+.notification-info {
+  background: linear-gradient(135deg, #2196F3, #1976D2);
+}
+
+.notification-error {
+  background: linear-gradient(135deg, #f44336, #d32f2f);
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* 매칭 오버레이 스타일 */
+.matchmaking-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+
+.matchmaking-popup {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.matchmaking-popup h3 {
+  margin: 0 0 1rem 0;
+  color: #333;
+  font-size: 1.5rem;
+}
+
+.matchmaking-popup p {
+  margin: 0 0 1.5rem 0;
+  color: #666;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 1rem auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.cancel-btn {
+  background: #f44336;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background 0.2s ease;
+}
+
+.cancel-btn:hover {
+  background: #d32f2f;
+}
+
+/* 랭크 섹션 개선 스타일 */
+.current-rank {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.rank-display {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.rank-info, .rating-info {
+  text-align: center;
+}
+
+.rank-label, .rating-label {
+  display: block;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.rank-value {
+  display: block;
+  color: #FFD700;
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.rating-value {
+  display: block;
+  color: white;
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.rank-stats {
+  display: flex;
+  justify-content: space-around;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.stat-item span:first-child {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+}
+
+.stat-item span:last-child {
+  color: white;
+  font-weight: bold;
+}
+
+.ranked-match-btn {
+  background: linear-gradient(135deg, #FFD700, #FFA000);
+  color: #333;
+  font-weight: bold;
+}
+
+.ranked-match-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #FFEB3B, #FFD700);
+  transform: translateY(-2px);
+}
+
+.custom-match-btn {
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  color: white;
+}
+
+.custom-match-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #66BB6A, #4CAF50);
+  transform: translateY(-2px);
 }

@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import io from 'socket.io-client';
 import './MainMenu.css';
 
 interface UserProfile {
@@ -41,13 +42,59 @@ const MainMenu: React.FC = () => {
   const [roomCode, setRoomCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
-
+  
+  // 랭크 매칭 관련 상태
+  const [isMatchmaking, setIsMatchmaking] = useState(false);
+  const [matchmakingType, setMatchmakingType] = useState<'ranked' | 'custom' | null>(null);
+  const [notification, setNotification] = useState<{type: 'success' | 'info' | 'error', message: string} | null>(null);
+  
+  const socketRef = useRef<any>(null);
   const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:4000';
 
   useEffect(() => {
     fetchUserProfile();
     fetchLeaderboard();
     fetchCurrentRoom();
+    
+    // 소켓 연결 설정
+    const token = localStorage.getItem('token');
+    if (token) {
+      socketRef.current = io(apiUrl, {
+        auth: { token }
+      });
+
+      // 소켓 이벤트 리스너
+      socketRef.current.on('notification', (data: {type: 'success' | 'info' | 'error', message: string, duration?: number}) => {
+        setNotification(data);
+        setTimeout(() => setNotification(null), data.duration || 3000);
+      });
+
+      socketRef.current.on('queueJoined', (data: {mode: string, queueSize: number}) => {
+        setIsMatchmaking(true);
+        setMatchmakingType(data.mode as 'ranked' | 'custom');
+      });
+
+      socketRef.current.on('queueLeft', () => {
+        setIsMatchmaking(false);
+        setMatchmakingType(null);
+      });
+
+      socketRef.current.on('gameState', (gameState: any) => {
+        // 게임이 시작되면 게임 페이지로 이동
+        navigate('/game', { state: { gameState } });
+      });
+
+      socketRef.current.on('ratingUpdate', (ratingData: any) => {
+        // 레이팅 업데이트 시 프로필 다시 로드
+        fetchUserProfile();
+      });
+    }
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
   }, []);
 
   const fetchUserProfile = async () => {
@@ -193,7 +240,21 @@ const MainMenu: React.FC = () => {
   };
 
   const startRankedMatch = () => {
-    setMessage('랭크 매칭은 아직 구현되지 않았습니다.');
+    if (socketRef.current && !isMatchmaking) {
+      socketRef.current.emit('joinRankedQueue');
+    }
+  };
+
+  const startCustomMatch = () => {
+    if (socketRef.current && !isMatchmaking) {
+      socketRef.current.emit('joinCustomQueue');
+    }
+  };
+
+  const cancelMatchmaking = () => {
+    if (socketRef.current && isMatchmaking) {
+      socketRef.current.emit('leaveQueue');
+    }
   };
 
   const enterGame = () => {
@@ -209,6 +270,27 @@ const MainMenu: React.FC = () => {
 
   return (
     <div className="main-menu">
+      {/* 알림 팝업 */}
+      {notification && (
+        <div className={`notification notification-${notification.type}`}>
+          {notification.message}
+        </div>
+      )}
+      
+      {/* 매칭 진행 상태 */}
+      {isMatchmaking && (
+        <div className="matchmaking-overlay">
+          <div className="matchmaking-popup">
+            <h3>🔍 매칭 중...</h3>
+            <p>{matchmakingType === 'ranked' ? '랭크 게임' : '일반 게임'} 상대방을 찾고 있습니다.</p>
+            <div className="loading-spinner"></div>
+            <button onClick={cancelMatchmaking} className="cancel-btn">
+              매칭 취소
+            </button>
+          </div>
+        </div>
+      )}
+      
       <header className="menu-header">
         <h1>🏃‍♂️ Quoridor Online</h1>
         {userProfile && (
@@ -230,7 +312,7 @@ const MainMenu: React.FC = () => {
           className={activeTab === 'ranked' ? 'active' : ''}
           onClick={() => setActiveTab('ranked')}
         >
-          랭크 게임
+          랜덤 매칭
         </button>
         <button 
           className={activeTab === 'custom' ? 'active' : ''}
@@ -286,17 +368,58 @@ const MainMenu: React.FC = () => {
 
         {activeTab === 'ranked' && (
           <div className="ranked-section">
-            <h2>랭크 게임</h2>
-            <div className="ranked-card">
-              <p>다른 플레이어와 랭킹을 겨루는 게임입니다.</p>
-              <p>승리하면 레이팅이 올라가고, 패배하면 레이팅이 내려갑니다.</p>
-              <button 
-                onClick={startRankedMatch}
-                disabled={loading}
-                className="match-btn"
-              >
-                {loading ? '매칭 중...' : '랭크 매칭 시작'}
-              </button>
+            <h2>� 랜덤 매칭</h2>
+            {userProfile && (
+              <div className="current-rank">
+                <div className="rank-display">
+                  <div className="rank-info">
+                    <span className="rank-label">현재 랭크</span>
+                    <span className="rank-value">브론즈</span>
+                  </div>
+                  <div className="rating-info">
+                    <span className="rating-label">레이팅</span>
+                    <span className="rating-value">{userProfile.rating}</span>
+                  </div>
+                </div>
+                <div className="rank-stats">
+                  <div className="stat-item">
+                    <span>게임 수</span>
+                    <span>{userProfile.gamesPlayed}게임</span>
+                  </div>
+                  <div className="stat-item">
+                    <span>승률</span>
+                    <span>{userProfile.winRate}%</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            <div className="match-container">
+              <div className="match-option">
+                <h3>� 랭크 매칭</h3>
+                <p>비슷한 실력의 플레이어와 매칭됩니다.</p>
+                <p>승리 시 레이팅 상승, 패배 시 레이팅 하락</p>
+                <button 
+                  onClick={startRankedMatch}
+                  disabled={loading || isMatchmaking}
+                  className="match-btn ranked-match-btn"
+                >
+                  {isMatchmaking ? '매칭 중...' : '랭크 매칭 시작'}
+                </button>
+              </div>
+              
+              <div className="match-option">
+                <h3>🎮 일반 매칭</h3>
+                <p>빠른 대전으로 연습하세요.</p>
+                <p>레이팅에 영향을 주지 않습니다.</p>
+                <button 
+                  onClick={startCustomMatch}
+                  disabled={loading || isMatchmaking}
+                  className="match-btn custom-match-btn"
+                >
+                  {isMatchmaking ? '매칭 중...' : '일반 매칭 시작'}
+                </button>
+              </div>
             </div>
           </div>
         )}

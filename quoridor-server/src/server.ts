@@ -47,17 +47,11 @@ app.use(express.json());
 
 // MongoDB 연결
 if (process.env.MONGODB_URI) {
-    console.log('MongoDB 연결 시도 중...');
-    
     mongoose.connect(process.env.MONGODB_URI)
         .then(() => {
             console.log('✅ MongoDB 연결 성공!');
-            console.log('연결 상태:', mongoose.connection.readyState);
         })
         .catch(err => {
-            console.error('❌ MongoDB 연결 실패:', err.message);
-            console.error('에러 코드:', err.code);
-            console.error('에러 이름:', err.codeName);
             console.log('🎮 인증 기능 없이 게임만 진행 가능합니다.');
         });
 } else {
@@ -89,5 +83,4 @@ const gameManager = new GameManager(io);
 const PORT = process.env.PORT || 4000;
 httpServer.listen(PORT, () => {
     console.log(`🚀 서버가 포트 ${PORT}에서 실행 중입니다`);
-    console.log(`🎮 게임 매칭 시스템이 활성화되었습니다`);
 });

@@ -3,6 +3,7 @@ import { auth } from '../middleware/auth';
 import { User } from '../models/User';
 import { Room } from '../models/Room';
 import { GameMode, RoomStatus } from '../types';
+import { RatingSystem } from '../game/RatingSystem';
 
 const router = Router();
 
@@ -201,6 +202,123 @@ router.post('/room/leave', auth, async (req, res) => {
         res.send({ message: '방에서 나갔습니다.' });
     } catch (error) {
         res.status(500).send({ error: '방 나가기에 실패했습니다.' });
+    }
+});
+
+// 레이팅 정보 조회
+router.get('/rating', auth, async (req, res) => {
+    try {
+        const user = await User.findById((req as any).user._id).select('-password');
+        if (!user) {
+            return res.status(404).send({ error: '사용자를 찾을 수 없습니다.' });
+        }
+
+        const rank = RatingSystem.getRankByRating(user.rating);
+        const winRate = user.gamesPlayed > 0 ? (user.gamesWon / user.gamesPlayed * 100).toFixed(1) : '0.0';
+
+        res.send({
+            rating: user.rating,
+            rank: rank,
+            rankColor: RatingSystem.getRankColor(rank),
+            gamesPlayed: user.gamesPlayed,
+            gamesWon: user.gamesWon,
+            winRate: parseFloat(winRate),
+            rankThresholds: RatingSystem.getRankThresholds(rank)
+        });
+    } catch (error) {
+        res.status(500).send({ error: '레이팅 정보를 불러오는데 실패했습니다.' });
+    }
+});
+
+// 전체 리더보드 (확장된 버전)
+router.get('/leaderboard', async (req, res) => {
+    try {
+        const { page = 1, limit = 50 } = req.query;
+        const pageNum = parseInt(page as string);
+        const limitNum = parseInt(limit as string);
+        const skip = (pageNum - 1) * limitNum;
+
+        const totalPlayers = await User.countDocuments({ gamesPlayed: { $gt: 0 } });
+        const players = await User.find({ gamesPlayed: { $gt: 0 } })
+            .sort({ rating: -1 })
+            .skip(skip)
+            .limit(limitNum)
+            .select('username rating gamesPlayed gamesWon createdAt');
+
+        const leaderboard = players.map((user, index) => {
+            const rank = RatingSystem.getRankByRating(user.rating);
+            const winRate = user.gamesPlayed > 0 ? (user.gamesWon / user.gamesPlayed * 100) : 0;
+            
+            return {
+                position: skip + index + 1,
+                username: user.username,
+                rating: user.rating,
+                rank: rank,
+                rankColor: RatingSystem.getRankColor(rank),
+                gamesPlayed: user.gamesPlayed,
+                gamesWon: user.gamesWon,
+                winRate: Math.round(winRate),
+                joinDate: user.createdAt
+            };
+        });
+
+        res.send({
+            leaderboard,
+            pagination: {
+                currentPage: pageNum,
+                totalPages: Math.ceil(totalPlayers / limitNum),
+                totalPlayers,
+                hasNext: pageNum * limitNum < totalPlayers,
+                hasPrev: pageNum > 1
+            }
+        });
+    } catch (error) {
+        res.status(500).send({ error: '리더보드를 불러오는데 실패했습니다.' });
+    }
+});
+
+// 랭크별 통계
+router.get('/rank-stats', async (req, res) => {
+    try {
+        const stats = await User.aggregate([
+            { $match: { gamesPlayed: { $gt: 0 } } },
+            {
+                $group: {
+                    _id: {
+                        $switch: {
+                            branches: [
+                                { case: { $and: [{ $gte: ["$rating", 0] }, { $lt: ["$rating", 1100] }] }, then: "bronze" },
+                                { case: { $and: [{ $gte: ["$rating", 1100] }, { $lt: ["$rating", 1300] }] }, then: "silver" },
+                                { case: { $and: [{ $gte: ["$rating", 1300] }, { $lt: ["$rating", 1500] }] }, then: "gold" },
+                                { case: { $and: [{ $gte: ["$rating", 1500] }, { $lt: ["$rating", 1700] }] }, then: "platinum" },
+                                { case: { $and: [{ $gte: ["$rating", 1700] }, { $lt: ["$rating", 1900] }] }, then: "diamond" },
+                                { case: { $and: [{ $gte: ["$rating", 1900] }, { $lt: ["$rating", 2100] }] }, then: "master" },
+                                { case: { $gte: ["$rating", 2100] }, then: "grandmaster" }
+                            ],
+                            default: "bronze"
+                        }
+                    },
+                    count: { $sum: 1 },
+                    avgRating: { $avg: "$rating" },
+                    minRating: { $min: "$rating" },
+                    maxRating: { $max: "$rating" }
+                }
+            },
+            { $sort: { "avgRating": 1 } }
+        ]);
+
+        const rankStats = stats.map(stat => ({
+            rank: stat._id,
+            playerCount: stat.count,
+            averageRating: Math.round(stat.avgRating),
+            minRating: stat.minRating,
+            maxRating: stat.maxRating,
+            rankColor: RatingSystem.getRankColor(stat._id)
+        }));
+
+        res.send({ rankStats });
+    } catch (error) {
+        res.status(500).send({ error: '랭크 통계를 불러오는데 실패했습니다.' });
     }
 });
 

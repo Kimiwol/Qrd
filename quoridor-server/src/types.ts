@@ -61,6 +61,26 @@ export interface MatchmakingRequest {
     userId: string;
     rating: number;
     gameMode: GameMode;
+    timestamp?: number; // 큐에 추가된 시간
+}
+
+// 랭크 등급
+export enum Rank {
+    BRONZE = 'bronze',
+    SILVER = 'silver', 
+    GOLD = 'gold',
+    PLATINUM = 'platinum',
+    DIAMOND = 'diamond',
+    MASTER = 'master',
+    GRANDMASTER = 'grandmaster'
+}
+
+// 레이팅 계산 결과
+export interface RatingCalculation {
+    oldRating: number;
+    newRating: number;
+    change: number;
+    rank: Rank;
 }
 
 // 게임 결과
@@ -70,7 +90,18 @@ export interface GameResult {
     mode: GameMode;
     duration: number;
     ratingChange?: {
-        winner: number;
-        loser: number;
+        winner: RatingCalculation;
+        loser: RatingCalculation;
     };
+}
+
+// 리더보드 엔트리
+export interface LeaderboardEntry {
+    userId: string;
+    username: string;
+    rating: number;
+    rank: Rank;
+    gamesPlayed: number;
+    gamesWon: number;
+    winRate: number;
 }
