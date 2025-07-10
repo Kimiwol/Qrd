@@ -8,8 +8,9 @@
   },
   "scripts": {
     "start": "node dist/server.js",
+    "dev": "ts-node-dev --respawn src/server.ts",
     "build": "tsc",
-    "dev": "ts-node src/server.ts",
+    "watch": "tsc -w",
     "postinstall": "npm run build"
   },
   "keywords": [],
@@ -32,6 +33,7 @@
     "typescript": "^5.1.6"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.1.10",
+    "ts-node-dev": "^2.0.0"
   }
 }

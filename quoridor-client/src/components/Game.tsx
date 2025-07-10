@@ -46,25 +46,23 @@ const GameOver = styled.div`
 const GameControls = styled.div`
   margin-bottom: 20px;
   display: flex;
-  gap: 10px;
 `;
 
 const Button = styled.button`
-  padding: 10px 20px;
-  font-size: 16px;
-  color: white;
+  padding: 8px 16px;
   border: none;
-  border-radius: 5px;
+  border-radius: 4px;
   cursor: pointer;
-  background-color: #4CAF50;
-  
-  &:hover {
-    background-color: #45a049;
+  font-weight: bold;
+
+  &.continue {
+    background-color: #4CAF50;
+    color: white;
   }
 
-  &:disabled {
-    background-color: #cccccc;
-    cursor: not-allowed;
+  &.quit {
+    background-color: #f44336;
+    color: white;
   }
 `;
 
@@ -113,6 +111,27 @@ const LogoutButton = styled(Button)`
   }
 `;
 
+const ContinueDialog = styled.div`
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+`;
+
+const DialogButtons = styled.div`
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+`;
+
 function Game() {
   const [socket, setSocket] = useState<ReturnType<typeof io> | null>(null);
   const [gameState, setGameState] = useState<GameState>({
@@ -126,6 +145,7 @@ function Game() {
   const [pauseMessage, setPauseMessage] = useState('');
   const [timeLeft, setTimeLeft] = useState(60);
   const [showTimeoutNotification, setShowTimeoutNotification] = useState(false);
+  const [showContinueDialog, setShowContinueDialog] = useState(false);
   const navigate = useNavigate();
 
   const resetTimer = useCallback(() => {
@@ -200,15 +220,10 @@ function Game() {
       resetTimer();
     });
 
-    newSocket.on('gameRestarted', () => {
-      setWinner(null);
-      resetTimer();
-    });
-
     return () => {
-      newSocket.close();
+      newSocket.disconnect();
     };
-  }, [resetTimer, navigate]);
+  }, [navigate, resetTimer]);
 
   const handleCellClick = (position: Position) => {
     if (socket && playerId && playerId === gameState.currentTurn && !isPaused) {
@@ -228,16 +243,40 @@ function Game() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    navigate('/login');
+  const handleGameEnd = () => {
+    setShowContinueDialog(true);
+  };
+
+  const handleContinue = () => {
+    if (socket) {
+      socket.emit('continue_game');
+      setShowContinueDialog(false);
+    }
+  };
+
+  const handleQuit = () => {
+    if (socket) {
+      socket.emit('quit_game');
+      navigate('/');
+    }
   };
 
   return (
     <Container>
-      <LogoutButton onClick={handleLogout}>로그아웃</LogoutButton>
-      <Title>Quoridor Game</Title>
+      <LogoutButton onClick={() => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        navigate('/login');
+      }}>로그아웃</LogoutButton>
+      
+      <Title>쿼리도 게임</Title>
+      
+      {isPaused && (
+        <GameOver>
+          <div>{pauseMessage}</div>
+          <Button onClick={handleContinue}>계속하기</Button>
+        </GameOver>
+      )}
       {!isPaused && !winner && gameState.currentTurn && (
         <Timer isTimeRunningOut={timeLeft <= 10}>
           남은 시간: {timeLeft}초
@@ -286,6 +325,15 @@ function Game() {
         <GameOver>
           대기 중... 다른 플레이어의 참가를 기다리고 있습니다.
         </GameOver>
+      )}
+      {showContinueDialog && (
+        <ContinueDialog>
+          <div>계속 반복하시겠습니까?</div>
+          <DialogButtons>
+            <Button onClick={handleContinue}>예</Button>
+            <Button onClick={handleQuit}>아니오</Button>
+          </DialogButtons>
+        </ContinueDialog>
       )}
     </Container>
   );
