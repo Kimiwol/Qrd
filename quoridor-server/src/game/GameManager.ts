@@ -136,9 +136,17 @@ export class GameManager {
 
         this.rooms.set(roomId, room);
 
-        // 플레이어에게 게임 시작 알림
-        player1.emit('gameStarted', { playerId: 'player1', roomId });
-        player2.emit('gameStarted', { playerId: 'player2', roomId });
+        // 플레이어에게 게임 시작 알림 (게임 상태도 함께 전송)
+        player1.emit('gameStarted', { 
+            playerId: 'player1', 
+            roomId,
+            gameState 
+        });
+        player2.emit('gameStarted', { 
+            playerId: 'player2', 
+            roomId,
+            gameState 
+        });
 
         // 게임 상태 전송
         this.io.to(roomId).emit('gameState', gameState);

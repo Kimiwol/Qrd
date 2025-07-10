@@ -141,7 +141,18 @@ console.log('- MONGODB_URI:', process.env.MONGODB_URI ? '설정됨' : '미설정
 
 console.log('🚀 서버 시작 시도...');
 
-httpServer.listen(PORT, () => {
+// 프로세스 에러 핸들링
+process.on('uncaughtException', (error) => {
+    console.error('❌ Uncaught Exception:', error.message);
+    process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+    process.exit(1);
+});
+
+httpServer.listen(Number(PORT), () => {
     console.log(`✅ 서버가 포트 ${PORT}에서 성공적으로 시작되었습니다!`);
     console.log(`🌐 서버 주소: ${process.env.NODE_ENV === 'production' ? 'https://quoridoronline-5ngr.onrender.com' : `http://localhost:${PORT}`}`);
 });
@@ -152,4 +163,5 @@ httpServer.on('error', (error: any) => {
     if (error.code === 'EADDRINUSE') {
         console.error(`포트 ${PORT}가 이미 사용 중입니다.`);
     }
+    process.exit(1);
 });

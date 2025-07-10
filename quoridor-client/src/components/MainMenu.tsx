@@ -59,42 +59,84 @@ const MainMenu: React.FC = () => {
     // 소켓 연결 설정
     const token = localStorage.getItem('token');
     if (token) {
+      console.log('소켓 연결 시도:', apiUrl);
       socketRef.current = io(apiUrl, {
         auth: { token }
       });
 
+      // 연결 상태 로그
+      socketRef.current.on('connect', () => {
+        console.log('소켓 연결 성공:', socketRef.current?.id);
+      });
+
+      socketRef.current.on('disconnect', () => {
+        console.log('소켓 연결 해제');
+      });
+
+      socketRef.current.on('error', (error: any) => {
+        console.error('소켓 에러:', error);
+      });
+
       // 소켓 이벤트 리스너
       socketRef.current.on('notification', (data: {type: 'success' | 'info' | 'error', message: string, duration?: number}) => {
+        console.log('알림 받음:', data);
         setNotification(data);
         setTimeout(() => setNotification(null), data.duration || 3000);
       });
 
       socketRef.current.on('queueJoined', (data: {mode: string, queueSize: number}) => {
+        console.log('큐 참가:', data);
         setIsMatchmaking(true);
         setMatchmakingType(data.mode as 'ranked' | 'custom');
       });
 
       socketRef.current.on('queueLeft', () => {
+        console.log('큐 떠남');
         setIsMatchmaking(false);
         setMatchmakingType(null);
       });
 
-      socketRef.current.on('gameStarted', (data: {playerId: string, roomId: string}) => {
-        console.log('Game started:', data);
+      socketRef.current.on('gameStarted', (data: {playerId: string, roomId: string, gameState?: any}) => {
+        console.log('게임 시작됨:', data);
         setIsMatchmaking(false);
         setMatchmakingType(null);
+        
+        // 더 구체적인 로깅
+        console.log('게임 화면으로 이동:', {
+          playerId: data.playerId,
+          roomId: data.roomId,
+          hasGameState: !!data.gameState
+        });
+        
         // 게임 페이지로 이동
-        navigate('/game', { state: { playerId: data.playerId, roomId: data.roomId } });
+        navigate('/game', { 
+          state: { 
+            playerId: data.playerId, 
+            roomId: data.roomId,
+            gameState: data.gameState 
+          } 
+        });
       });
 
       socketRef.current.on('gameState', (gameState: any) => {
+        console.log('게임 상태 받음:', gameState);
         // 게임이 시작되면 게임 페이지로 이동
         navigate('/game', { state: { gameState } });
       });
 
       socketRef.current.on('ratingUpdate', (ratingData: any) => {
+        console.log('레이팅 업데이트:', ratingData);
         // 레이팅 업데이트 시 프로필 다시 로드
         fetchUserProfile();
+      });
+
+      // 매칭 관련 추가 이벤트
+      socketRef.current.on('waiting', (message: string) => {
+        console.log('대기 메시지:', message);
+      });
+
+      socketRef.current.on('matchFound', (data: any) => {
+        console.log('매치 찾음:', data);
       });
     }
 
@@ -249,19 +291,43 @@ const MainMenu: React.FC = () => {
   };
 
   const startRankedMatch = () => {
+    console.log('랭크 매칭 시작 시도:', { 
+      socket: !!socketRef.current, 
+      isMatchmaking, 
+      socketConnected: socketRef.current?.connected 
+    });
     if (socketRef.current && !isMatchmaking) {
+      console.log('joinRankedQueue 이벤트 전송');
       socketRef.current.emit('joinRankedQueue');
+    } else {
+      console.log('매칭 시작 실패:', { 
+        noSocket: !socketRef.current, 
+        alreadyMatchmaking: isMatchmaking 
+      });
     }
   };
 
   const startCustomMatch = () => {
+    console.log('일반 매칭 시작 시도:', { 
+      socket: !!socketRef.current, 
+      isMatchmaking, 
+      socketConnected: socketRef.current?.connected 
+    });
     if (socketRef.current && !isMatchmaking) {
+      console.log('joinCustomQueue 이벤트 전송');
       socketRef.current.emit('joinCustomQueue');
+    } else {
+      console.log('매칭 시작 실패:', { 
+        noSocket: !socketRef.current, 
+        alreadyMatchmaking: isMatchmaking 
+      });
     }
   };
 
   const cancelMatchmaking = () => {
+    console.log('매칭 취소 시도:', { isMatchmaking });
     if (socketRef.current && isMatchmaking) {
+      console.log('leaveQueue 이벤트 전송');
       socketRef.current.emit('leaveQueue');
     }
   };

@@ -32,12 +32,14 @@ export class MatchmakingSystem {
         if (existingIndex !== -1) {
             // 이미 있다면 업데이트
             this.queue[request.gameMode][existingIndex] = request;
+            console.log(`매칭 큐 업데이트: ${request.userId} (${request.gameMode})`);
         } else {
             // 새로 추가
             this.queue[request.gameMode].push({
                 ...request,
                 timestamp: Date.now()
             });
+            console.log(`매칭 큐 추가: ${request.userId} (${request.gameMode}) - 현재 큐 크기: ${this.queue[request.gameMode].length}`);
         }
     }
 
@@ -65,6 +67,8 @@ export class MatchmakingSystem {
             return null;
         }
 
+        console.log(`매칭 시도: ${gameMode} 모드, 큐 크기: ${queue.length}`);
+
         // 랭크 모드의 경우 레이팅 기반 매칭
         if (gameMode === GameMode.RANKED) {
             return this.findRankedMatch(queue);
@@ -74,6 +78,7 @@ export class MatchmakingSystem {
         const player1 = queue.shift()!;
         const player2 = queue.shift()!;
         
+        console.log(`커스텀 매칭 성공: ${player1.userId} vs ${player2.userId}`);
         return { player1, player2 };
     }
 
@@ -106,6 +111,7 @@ export class MatchmakingSystem {
                     queue.splice(j, 1); // j가 더 큰 인덱스이므로 먼저 제거
                     queue.splice(i, 1);
                     
+                    console.log(`랭크 매칭 성공: ${player1.userId}(${player1.rating}) vs ${player2.userId}(${player2.rating})`);
                     return { player1, player2 };
                 }
             }

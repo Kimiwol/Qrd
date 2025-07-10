@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import io from 'socket.io-client';
 import styled from 'styled-components';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Board from './Board';
 import { GameState, Position } from '../types';
 
@@ -169,6 +169,25 @@ function Game() {
   const [showTimeoutNotification, setShowTimeoutNotification] = useState(false);
   const [showContinueDialog, setShowContinueDialog] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // 라우터 state에서 초기 데이터 가져오기
+  useEffect(() => {
+    const state = location.state as any;
+    if (state) {
+      console.log('Game 컴포넌트에서 받은 초기 데이터:', state);
+      
+      if (state.playerId) {
+        setPlayerId(state.playerId);
+        console.log('플레이어 ID 설정:', state.playerId);
+      }
+      
+      if (state.gameState) {
+        setGameState(state.gameState);
+        console.log('초기 게임 상태 설정:', state.gameState);
+      }
+    }
+  }, [location.state]);
 
   const resetTimer = useCallback(() => {
     setTimeLeft(60);
