@@ -20,6 +20,7 @@ const httpServer = createServer(app);
 // CORS 설정
 const allowedOrigins = [
     "https://qrdonline.netlify.app",
+    "https://quoridor-online.netlify.app",  // 다른 가능한 URL
     ...(process.env.NODE_ENV === 'development' ? ["http://localhost:3000"] : [])
 ];
 
@@ -27,9 +28,31 @@ if (process.env.CLIENT_URL && !allowedOrigins.includes(process.env.CLIENT_URL)) 
     allowedOrigins.push(process.env.CLIENT_URL);
 }
 
+console.log('Allowed CORS origins:', allowedOrigins);
+
 const io = new Server(httpServer, {
     cors: {
-        origin: allowedOrigins,
+        origin: (origin, callback) => {
+            // 개발 환경에서는 모든 origin 허용
+            if (process.env.NODE_ENV === 'development') {
+                callback(null, true);
+                return;
+            }
+            
+            // origin이 없는 경우 (모바일 앱 등) 허용
+            if (!origin) {
+                callback(null, true);
+                return;
+            }
+            
+            // Netlify 도메인 패턴 확인
+            if (origin.includes('netlify.app') || allowedOrigins.includes(origin)) {
+                callback(null, true);
+            } else {
+                console.log('Blocked origin:', origin);
+                callback(new Error('CORS policy violation'));
+            }
+        },
         methods: ["GET", "POST"],
         credentials: true,
         allowedHeaders: ["Content-Type", "Authorization"]
@@ -38,12 +61,42 @@ const io = new Server(httpServer, {
 });
 
 app.use(cors({
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+        // 개발 환경에서는 모든 origin 허용
+        if (process.env.NODE_ENV === 'development') {
+            callback(null, true);
+            return;
+        }
+        
+        // origin이 없는 경우 (모바일 앱 등) 허용
+        if (!origin) {
+            callback(null, true);
+            return;
+        }
+        
+        // Netlify 도메인 패턴 확인
+        if (origin.includes('netlify.app') || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            console.log('Blocked origin:', origin);
+            callback(new Error('CORS policy violation'));
+        }
+    },
     credentials: true,
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type", "Authorization"]
 }));
 app.use(express.json());
+
+// 요청 로깅 미들웨어
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} ${req.method} ${req.path}`, {
+        origin: req.get('Origin'),
+        userAgent: req.get('User-Agent'),
+        body: req.method === 'POST' ? { ...req.body, password: req.body.password ? '***' : undefined } : undefined
+    });
+    next();
+});
 
 // MongoDB 연결
 if (process.env.MONGODB_URI) {
