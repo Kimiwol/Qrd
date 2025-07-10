@@ -95,6 +95,7 @@ const MainMenu: React.FC = () => {
         socketRef.current.disconnect();
       }
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchUserProfile = async () => {
