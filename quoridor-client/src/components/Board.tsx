@@ -1,6 +1,32 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { GameState, Position } from '../types';
+import { GameState, Position, Wall as WallType, Player as PlayerInfo } from '../types';
+
+interface BoardProps {
+  gameState: GameState;
+  onCellClick: (position: Position) => void;
+  onWallPlace: (wall: WallType) => void;
+  playerId: string | null;
+  isMyTurn: boolean;
+}
+
+const GridContainer = styled.div`
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  grid-template-rows: repeat(9, 1fr);
+  gap: 8px;
+  position: relative;
+  width: 100%;
+  height: 100%;
+`;
+
+const Controls = styled.div`
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 10px;
+`;
 
 const BoardContainer = styled.div`
   display: grid;
@@ -62,6 +88,14 @@ const Cell = styled.div<{ isCurrentTurn: boolean; isValidMove: boolean; showVali
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   }
+`;
+
+const ControlsContainer = styled.div`
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 10px;
 `;
 
 const WallPlacementArea = styled.div<{ type: 'horizontal' | 'vertical' }>`
@@ -154,222 +188,248 @@ const Player = styled.div<{ isPlayer1: boolean }>`
   }
 `;
 
-const Wall = styled.div<{ isHorizontal: boolean }>`
+const Wall = styled.div<{ position: Position; isHorizontal: boolean }>`
   position: absolute;
   background: linear-gradient(135deg, #8b4513, #a0522d);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
   z-index: 3;
   border-radius: 2px;
+  left: ${props => props.position.x * (60 + 8)}px;
+  top: ${props => props.position.y * (60 + 8)}px;
 
   ${props => props.isHorizontal ? `
-    width: 128px;
-    height: 12px;
-    left: -4px;
-    top: 62px;
+    width: ${60 * 2 + 8}px;
+    height: 8px;
+    margin-top: 56px;
   ` : `
-    width: 12px;
-    height: 128px;
-    left: 62px;
-    top: -4px;
+    width: 8px;
+    height: ${60 * 2 + 8}px;
+    margin-left: 56px;
+  `}
+
+  @media (max-width: 768px) {
+    left: ${props => props.position.x * (35 + 6)}px;
+    top: ${props => props.position.y * (35 + 6)}px;
+    ${props => props.isHorizontal ? `
+      width: ${35 * 2 + 6}px;
+      height: 6px;
+      margin-top: 33px;
+    ` : `
+      width: 6px;
+      height: ${35 * 2 + 6}px;
+      margin-left: 33px;
+    `}
+  }
+  
+  @media (max-width: 480px) {
+    left: ${props => props.position.x * (30 + 5)}px;
+    top: ${props => props.position.y * (30 + 5)}px;
+    ${props => props.isHorizontal ? `
+      width: ${30 * 2 + 5}px;
+      height: 5px;
+      margin-top: 28px;
+    ` : `
+      width: 5px;
+      height: ${30 * 2 + 5}px;
+      margin-left: 28px;
+    `}
+  }
+`;
+
+const PreviewWall = styled(Wall)`
+  background: rgba(76, 175, 80, 0.7);
+  box-shadow: 0 2px 10px rgba(76, 175, 80, 0.5);
+  z-index: 5; // 다른 요소들보다 위에 보이도록 z-index 증가
+  pointer-events: none; // 미리보기 벽이 마우스 이벤트를 가로채지 않도록 설정
+
+  ${props => props.isHorizontal ? `
+    height: 6px; // 두께 줄임
+  ` : `
+    width: 6px; // 두께 줄임
   `}
 
   @media (max-width: 768px) {
     ${props => props.isHorizontal ? `
-      width: 76px;
-      height: 8px;
-      left: -3px;
-      top: 36.5px;
+      height: 5px;
     ` : `
-      width: 8px;
-      height: 76px;
-      left: 36.5px;
-      top: -3px;
+      width: 5px;
     `}
   }
   
   @media (max-width: 480px) {
     ${props => props.isHorizontal ? `
-      width: 65px;
-      height: 6px;
-      left: -2.5px;
-      top: 31px;
+      height: 4px;
     ` : `
-      width: 6px;
-      height: 65px;
-      left: 31px;
-      top: -2.5px;
+      width: 4px;
     `}
   }
 `;
 
-const WallPreview = styled.div<{ isHorizontal: boolean }>`
+const StyledPlayerPiece = styled.div<{ player: 'player1' | 'player2' }>`
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: ${props => props.player === 'player1' ? '#ff4444' : '#4444ff'};
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s;
+  z-index: 10;
   position: absolute;
-  background: transparent;
-  border: 2px dashed #4CAF50;
-  z-index: 3;
-  border-radius: 2px;
-  pointer-events: none;
-
-  ${props => props.isHorizontal ? `
-    width: 128px;
-    height: 12px;
-    left: -4px;
-    top: 62px;
-  ` : `
-    width: 12px;
-    height: 128px;
-    left: 62px;
-    top: -4px;
-  `}
-
-  @media (max-width: 768px) {
-    ${props => props.isHorizontal ? `
-      width: 76px;
-      height: 8px;
-      left: -3px;
-      top: 36.5px;
-    ` : `
-      width: 8px;
-      height: 76px;
-      left: 36.5px;
-      top: -3px;
-    `}
-  }
-  
-  @media (max-width: 480px) {
-    ${props => props.isHorizontal ? `
-      width: 65px;
-      height: 6px;
-      left: -2.5px;
-      top: 31px;
-    ` : `
-      width: 6px;
-      height: 65px;
-      left: 31px;
-      top: -2.5px;
-    `}
-  }
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 `;
 
-interface BoardProps {
-  gameState: GameState;
-  onCellClick: (position: Position) => void;
-  onWallPlace: (position: Position, isHorizontal: boolean) => void;
-}
+const Board: React.FC<BoardProps> = ({
+  gameState,
+  onCellClick,
+  onWallPlace,
+  playerId,
+  isMyTurn,
+}) => {
+  const [previewWall, setPreviewWall] = useState<{ position: Position; isHorizontal: boolean } | null>(null);
+  const [isPlacingWall, setIsPlacingWall] = useState(false);
 
-const Board: React.FC<BoardProps> = ({ gameState, onCellClick, onWallPlace }) => {
-  const [wallPreview, setWallPreview] = useState<{position: Position, isHorizontal: boolean} | null>(null);
+  const playerPerspective = playerId === 'player1' ? 'player1' : 'player2';
 
-  // 간단한 이동 가능성 체크 (UI 힌트용)
-  const isValidMove = (position: Position): boolean => {
-    const currentPlayer = gameState.players.find(p => p.id === gameState.currentTurn);
-    if (!currentPlayer) return false;
-
-    const dx = Math.abs(position.x - currentPlayer.position.x);
-    const dy = Math.abs(position.y - currentPlayer.position.y);
-
-    // 다른 플레이어가 있는 위치인지 확인
-    const hasPlayer = gameState.players.some(p => 
-      p.position.x === position.x && p.position.y === position.y
-    );
-
-    if (hasPlayer) return false;
-
-    // 기본 이동 (1칸)
-    if ((dx === 1 && dy === 0) || (dx === 0 && dy === 1)) {
-      return true;
+  const transformCoordinates = (coords: Position) => {
+    if (playerPerspective === 'player1') {
+      return coords;
     }
-
-    // 점프 이동 (2칸) - 중간에 상대방이 있을 때만 허용
-    if ((dx === 2 && dy === 0) || (dx === 0 && dy === 2)) {
-      const midX = (position.x + currentPlayer.position.x) / 2;
-      const midY = (position.y + currentPlayer.position.y) / 2;
-      
-      // 중간 위치에 상대방이 있는지 확인
-      const hasPlayerInMiddle = gameState.players.some(p =>
-        p.id !== currentPlayer.id &&
-        p.position.x === midX &&
-        p.position.y === midY
-      );
-
-      return hasPlayerInMiddle;
-    }
-
-    return false;
+    return { x: 8 - coords.x, y: 8 - coords.y };
   };
 
-  const renderBoard = () => {
-    const cells = [];
+  const renderPlayer = (player: PlayerInfo, playerType: 'player1' | 'player2') => {
+    if (!player || player.position.x === undefined || player.position.y === undefined) return null;
+    const { x, y } = transformCoordinates(player.position);
     
-    for (let y = 0; y < 9; y++) {
-      for (let x = 0; x < 9; x++) {
-        const position = { x, y };
-        const player = gameState.players.find(p => 
-          p.position.x === x && p.position.y === y
-        );
-        const isCurrentTurn = player?.id === gameState.currentTurn;
-        const validMove = isValidMove(position);
+    const cellStyle = {
+        gridColumn: `${y + 1}`,
+        gridRow: `${x + 1}`,
+        position: 'relative',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center'
+    } as React.CSSProperties;
 
-        const horizontalWall = gameState.walls.find(w => 
-          w.isHorizontal && w.position.x === x && w.position.y === y
-        );
-        const verticalWall = gameState.walls.find(w => 
-          !w.isHorizontal && w.position.x === x && w.position.y === y
-        );
+    return (
+      <div style={cellStyle}>
+        <StyledPlayerPiece player={playerType} />
+      </div>
+    );
+  };
 
-        // 벽 설치 가능 여부 확인 (수정)
-        const canPlaceHorizontalWall = x < 8;  // 가로벽은 마지막 열 제외
-        const canPlaceVerticalWall = y < 8;    // 세로벽은 마지막 행 제외
+  const handleCellClick = (row: number, col: number) => {
+    if (!isMyTurn) return;
 
-        cells.push(
-          <Cell 
-            key={`${x}-${y}`}
-            isCurrentTurn={isCurrentTurn}
-            isValidMove={validMove}
-            showValidMove={validMove}
-            onClick={() => onCellClick(position)}
-          >
-            {player && <Player isPlayer1={player.id === 'player1'} />}
-            {horizontalWall && <Wall isHorizontal={true} />}
-            {verticalWall && <Wall isHorizontal={false} />}
-            {canPlaceHorizontalWall && !horizontalWall && (
-              <WallPlacementArea
-                type="horizontal"
-                onMouseEnter={() => setWallPreview({ position, isHorizontal: true })}
-                onMouseLeave={() => setWallPreview(null)}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onWallPlace(position, true);
-                }}
-              />
-            )}
-            {canPlaceVerticalWall && !verticalWall && (
-              <WallPlacementArea
-                type="vertical"
-                onMouseEnter={() => setWallPreview({ position, isHorizontal: false })}
-                onMouseLeave={() => setWallPreview(null)}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onWallPlace(position, false);
-                }}
-              />
-            )}
-            {wallPreview && wallPreview.position.x === x && wallPreview.position.y === y && (
-              <WallPreview 
-                isHorizontal={wallPreview.isHorizontal}
-              />
-            )}
-          </Cell>
-        );
-      }
+    const transformedCol = playerPerspective === 'player1' ? col : 8 - col;
+    const transformedRow = playerPerspective === 'player1' ? row : 8 - row;
+
+    if (!isPlacingWall) {
+        console.log(`이동 시도: (${transformedRow}, ${transformedCol})`);
+        onCellClick({ x: transformedRow, y: transformedCol });
     }
+  };
+
+  const handleCellMouseMove = (e: React.MouseEvent<HTMLDivElement>, row: number, col: number) => {
+    if (!isMyTurn || !isPlacingWall) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const isHorizontal = Math.abs(x - rect.width / 2) > Math.abs(y - rect.height / 2);
     
-    return cells;
+    const transformedCol = playerPerspective === 'player1' ? col : 8 - col;
+    const transformedRow = playerPerspective === 'player1' ? row : 8 - row;
+
+    if (transformedCol < 8 && transformedRow < 8) {
+        const newPreviewWall = { position: { x: transformedRow, y: transformedCol }, isHorizontal };
+        // 불필요한 리렌더링을 막기 위해 상태가 실제로 변경될 때만 업데이트
+        if (JSON.stringify(newPreviewWall) !== JSON.stringify(previewWall)) {
+            setPreviewWall(newPreviewWall);
+        }
+    }
+  };
+
+  const handleCellMouseLeave = () => {
+    setPreviewWall(null);
+  };
+
+  const handleWallPlacement = (isHorizontal: boolean) => {
+    if (!isMyTurn || !previewWall) return;
+
+    const { position } = previewWall;
+
+    console.log(`벽 설치 확정: (${position.x}, ${position.y}), 방향: ${isHorizontal ? 'horizontal' : 'vertical'}`);
+    onWallPlace({
+      position,
+      isHorizontal,
+    });
+    setPreviewWall(null);
+    setIsPlacingWall(false);
+  };
+
+  const toggleWallPlacement = () => {
+    setIsPlacingWall(!isPlacingWall);
+    setPreviewWall(null);
+  };
+
+  const renderWall = (wall: WallType, index: number) => {
+    const { position, isHorizontal } = wall;
+    const transformedPosition = transformCoordinates(position);
+    
+    const transformedIsHorizontal = isHorizontal;
+
+    return (
+      <Wall
+        key={index}
+        position={transformedPosition}
+        isHorizontal={transformedIsHorizontal}
+      />
+    );
   };
 
   return (
     <BoardContainer>
-      {renderBoard()}
+      <GridContainer>
+        {Array.from({ length: 9 }).map((_, row) =>
+          Array.from({ length: 9 }).map((_, col) => (
+            <Cell
+              key={`${row}-${col}`}
+              isCurrentTurn={isMyTurn}
+              isValidMove={false} // TODO: Add logic for valid moves
+              showValidMove={false} // TODO: Add logic for showing valid moves
+              onClick={() => handleCellClick(row, col)}
+              onMouseMove={(e) => handleCellMouseMove(e, row, col)}
+              onMouseLeave={handleCellMouseLeave}
+            />
+          ))
+        )}
+        {renderPlayer(gameState.players.find(p => p.id === 'player1')!, 'player1')}
+        {renderPlayer(gameState.players.find(p => p.id === 'player2')!, 'player2')}
+        {gameState.walls.map(renderWall)}
+        {previewWall && (
+          <PreviewWall
+            position={transformCoordinates(previewWall.position)}
+            isHorizontal={previewWall.isHorizontal}
+          />
+        )}
+      </GridContainer>
+      <Controls>
+        <button onClick={toggleWallPlacement} disabled={!isMyTurn}>
+          {isPlacingWall ? '벽 놓기 취소' : '벽 놓기'}
+        </button>
+        {isPlacingWall && (
+          <>
+            <button onClick={() => previewWall && handleWallPlacement(true)} disabled={!previewWall}>
+              가로로 놓기
+            </button>
+            <button onClick={() => previewWall && handleWallPlacement(false)} disabled={!previewWall}>
+              세로로 놓기
+            </button>
+          </>
+        )}
+      </Controls>
     </BoardContainer>
   );
 };

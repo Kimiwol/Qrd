@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import io from 'socket.io-client';
 import styled from 'styled-components';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Board from './Board';
 import { GameState, Position, PlayerInfo, GameStartData } from '../types';
+import { useSocket } from '../contexts/SocketContext';
 
 const GameContainer = styled.div`
   display: flex;
@@ -323,7 +323,7 @@ const PlayerTimer = styled.div<{ isTimeRunningOut: boolean; isActive: boolean }>
 `;
 
 function Game() {
-  const [socket, setSocket] = useState<ReturnType<typeof io> | null>(null);
+  const { socket } = useSocket();
   const [gameState, setGameState] = useState<GameState>({
     players: [],
     walls: [],
@@ -337,10 +337,6 @@ function Game() {
   const [showTimeoutNotification, setShowTimeoutNotification] = useState(false);
   const [showContinueDialog, setShowContinueDialog] = useState(false);
   const [showQuitDialog, setShowQuitDialog] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<{
-    type: 'move' | 'wall';
-    data: any;
-  } | null>(null);
   const [playerInfo, setPlayerInfo] = useState<{
     me: PlayerInfo;
     opponent: PlayerInfo;
@@ -395,149 +391,148 @@ function Game() {
       return;
     }
 
-    const newSocket = io(process.env.REACT_APP_WS_URL || 'ws://localhost:4000', {
-      auth: { token }
-    });
+    // 전역 소켓이 있는 경우에만 이벤트 리스너 설정
+    if (socket) {
+      console.log('🎮 Game.tsx에서 소켓 이벤트 리스너 설정');
 
-    setSocket(newSocket);
-
-    newSocket.on('connect_error', (error: Error) => {
-      if (error.message === '인증이 필요합니다.') {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        navigate('/login');
-      }
-    });
-
-    newSocket.on('playerAssigned', (assignedPlayerId: string | null) => {
-      setPlayerId(assignedPlayerId);
-    });
-
-    newSocket.on('gameStarted', (data: GameStartData) => {
-      console.log('🎮 게임 시작 데이터 상세:', {
-        전체데이터: data,
-        playerId: data.playerId,
-        playerInfo: data.playerInfo,
-        me정보: data.playerInfo?.me,
-        opponent정보: data.playerInfo?.opponent,
-        gameState: data.gameState
+      socket.on('connect_error', (error: Error) => {
+        if (error.message === '인증이 필요합니다.') {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          navigate('/login');
+        }
       });
-      console.log('🎯 초기 턴 정보:', {
-        currentTurn: data.gameState.currentTurn,
-        myPlayerId: data.playerId,
-        isMyTurn: data.gameState.currentTurn === data.playerId
+
+      socket.on('playerAssigned', (assignedPlayerId: string | null) => {
+        setPlayerId(assignedPlayerId);
       });
-      setPlayerId(data.playerId);
-      setGameState(data.gameState);
-      setPlayerInfo(data.playerInfo);
-      console.log('플레이어 정보 설정 완료:', {
-        설정된PlayerId: data.playerId,
-        설정된PlayerInfo: data.playerInfo
+
+      socket.on('gameStarted', (data: GameStartData) => {
+        console.log('🎮 게임 시작 데이터 상세:', {
+          전체데이터: data,
+          playerId: data.playerId,
+          playerInfo: data.playerInfo,
+          me정보: data.playerInfo?.me,
+          opponent정보: data.playerInfo?.opponent,
+          gameState: data.gameState
+        });
+        console.log('🎯 초기 턴 정보:', {
+          currentTurn: data.gameState.currentTurn,
+          myPlayerId: data.playerId,
+          isMyTurn: data.gameState.currentTurn === data.playerId
+        });
+        setPlayerId(data.playerId);
+        setGameState(data.gameState);
+        setPlayerInfo(data.playerInfo);
+        console.log('플레이어 정보 설정 완료:', {
+          설정된PlayerId: data.playerId,
+          설정된PlayerInfo: data.playerInfo
+        });
+        resetTimer();
       });
-      resetTimer();
-    });
 
-    newSocket.on('gameState', (newGameState: GameState) => {
-      console.log('🔄 게임 상태 업데이트:', {
-        currentTurn: newGameState.currentTurn,
-        myPlayerId: playerId,
-        isMyTurn: newGameState.currentTurn === playerId
+      socket.on('gameState', (newGameState: GameState) => {
+        console.log('🔄 게임 상태 업데이트:', {
+          currentTurn: newGameState.currentTurn,
+          myPlayerId: playerId,
+          isMyTurn: newGameState.currentTurn === playerId
+        });
+        setGameState(newGameState);
+        resetTimer();
       });
-      setGameState(newGameState);
-      resetTimer();
-    });
 
-    newSocket.on('turnTimedOut', (message: string) => {
-      console.log('🕐 턴 타임아웃:', message);
-      setShowTimeoutNotification(true);
-      setTimeout(() => setShowTimeoutNotification(false), 3000);
-      resetTimer();
-    });
+      socket.on('turnTimedOut', (message: string) => {
+        console.log('🕐 턴 타임아웃:', message);
+        setShowTimeoutNotification(true);
+        setTimeout(() => setShowTimeoutNotification(false), 3000);
+        resetTimer();
+      });
 
-    newSocket.on('gameOver', (winnerId: string) => {
-      console.log('🏁 게임 종료:', winnerId);
-      setWinner(winnerId);
-    });
+      socket.on('gameOver', (winnerId: string) => {
+        console.log('🏁 게임 종료:', winnerId);
+        setWinner(winnerId);
+      });
 
-    newSocket.on('gamePaused', (message: string) => {
-      setIsPaused(true);
-      setPauseMessage(message);
-    });
+      socket.on('gamePaused', (message: string) => {
+        setIsPaused(true);
+        setPauseMessage(message);
+      });
 
-    newSocket.on('gameResumed', () => {
-      setIsPaused(false);
-      setPauseMessage('');
-      resetTimer();
-    });
+      socket.on('gameResumed', () => {
+        setIsPaused(false);
+        setPauseMessage('');
+        resetTimer();
+      });
 
-    newSocket.on('playerDisconnected', (message: string) => {
-      console.log('🚪 플레이어 연결 해제:', message);
-      setIsPaused(true);
-      setPauseMessage(message);
-    });
+      socket.on('playerDisconnected', (message: string) => {
+        console.log('🚪 플레이어 연결 해제:', message);
+        setIsPaused(true);
+        setPauseMessage(message);
+      });
 
-    return () => {
-      newSocket.disconnect();
-    };
-  }, [navigate, resetTimer]);
+      return () => {
+        // 이벤트 리스너 정리
+        socket.off('connect_error');
+        socket.off('playerAssigned');
+        socket.off('gameStarted');
+        socket.off('gameState');
+        socket.off('turnTimedOut');
+        socket.off('gameOver');
+        socket.off('gamePaused');
+        socket.off('gameResumed');
+        socket.off('playerDisconnected');
+      };
+    }
+  }, [socket, navigate, resetTimer, playerId]);
 
   const handleCellClick = (position: Position) => {
+    console.log(`[Game.tsx] handleCellClick received from Board:`, position);
     if (socket && gameState.currentTurn === playerId && !winner && !isPaused) {
-      // Player2인 경우 좌표를 원래 게임 상태로 역변환
-      const actualPosition = playerId === 'player2' 
-        ? { x: 8 - position.x, y: 8 - position.y }
-        : position;
-        
-      setConfirmAction({
-        type: 'move',
-        data: actualPosition
+      let serverPosition = position;
+      // Player2인 경우, 서버의 절대 좌표계(player1 기준)로 변환
+      if (playerId === 'player2') {
+        serverPosition = {
+          x: 8 - position.x,
+          y: 8 - position.y,
+        };
+        console.log(`[Game.tsx] P2 좌표 변환 (Move):`, { from: position, to: serverPosition });
+      }
+      
+      console.log(`[Game.tsx] 'move' 이벤트 전송:`, serverPosition);
+      socket.emit('move', serverPosition);
+
+    } else {
+      console.warn(`[Game.tsx] Move ignored. Conditions not met:`, {
+        socketExists: !!socket,
+        isMyTurn: gameState.currentTurn === playerId,
+        isWinner: !!winner,
+        isPaused: isPaused,
       });
     }
   };
 
-  const handleWallPlace = (position: Position, isHorizontal: boolean) => {
+  const handleWallPlacement = (wall: { position: Position, isHorizontal: boolean }) => {
     if (socket && gameState.currentTurn === playerId && !winner && !isPaused) {
-      // Player2인 경우 벽 좌표를 원래 게임 상태로 역변환
-      const actualPosition = playerId === 'player2' 
-        ? { 
-            x: isHorizontal ? 7 - position.x : 8 - position.x, 
-            y: isHorizontal ? 8 - position.y : 7 - position.y 
-          }
-        : position;
-        
-      setConfirmAction({
-        type: 'wall',
-        data: { position: actualPosition, isHorizontal }
-      });
-    }
-  };
-
-  const executeAction = () => {
-    if (!confirmAction || !socket) return;
-
-    if (confirmAction.type === 'move') {
-      socket.emit('move', confirmAction.data);
-    } else if (confirmAction.type === 'wall') {
-      socket.emit('placeWall', confirmAction.data);
-    }
-    
-    setConfirmAction(null);
-  };
-
-  const cancelAction = () => {
-    setConfirmAction(null);
-  };
-
-  const handleRestart = () => {
-    if (socket) {
-      socket.emit('restartGame');
-      setWinner(null);
-      setShowContinueDialog(false);
+      let serverWall = wall;
+      // Player2인 경우, 서버의 절대 좌표계(player1 기준)로 변환
+      if (playerId === 'player2') {
+        serverWall = {
+          ...wall,
+          position: {
+            x: wall.isHorizontal ? 7 - wall.position.x : 8 - wall.position.x,
+            y: wall.isHorizontal ? 8 - wall.position.y : 7 - wall.position.y,
+          },
+        };
+        console.log(`[Game.tsx] P2 좌표 변환 (Wall):`, { from: wall, to: serverWall });
+      }
+      
+      console.log(`[Game.tsx] 'placeWall' 이벤트 전송:`, serverWall);
+      socket.emit('placeWall', serverWall);
     }
   };
 
   const handleQuit = () => {
-    navigate('/menu');
+    setShowQuitDialog(true);
   };
 
   const handleQuitConfirm = () => {
@@ -713,84 +708,17 @@ function Game() {
         <BoardWrapper>
           <Board
             gameState={currentGameState}
+            playerId={playerId}
+            isMyTurn={gameState.currentTurn === playerId}
             onCellClick={handleCellClick}
-            onWallPlace={handleWallPlace}
+            onWallPlace={handleWallPlacement}
           />
         </BoardWrapper>
-
         {/* 내 프로필 (하단) */}
         {myPlayer ? renderPlayerCard(myPlayer, 'bottom', currentGameState) : (
           <div>내 정보 없음</div>
         )}
       </GameArea>
-
-      {/* 행동 확인 다이얼로그 */}
-      {confirmAction && (
-        <Dialog>
-          <DialogMessage>
-            {confirmAction.type === 'move' ? '이동하시겠습니까?' : '벽을 설치하시겠습니까?'}
-          </DialogMessage>
-          <DialogButtons>
-            <DialogButton variant="cancel" onClick={cancelAction}>
-              ✕
-            </DialogButton>
-            <DialogButton variant="confirm" onClick={executeAction}>
-              ○
-            </DialogButton>
-          </DialogButtons>
-        </Dialog>
-      )}
-
-      {winner && (
-        <GameOverlay>
-          🎉 {winner === playerId ? '승리!' : '패배...'} 🎉
-          <br />
-          <div style={{ fontSize: '18px', marginTop: '20px' }}>
-            <button 
-              onClick={() => setShowContinueDialog(true)}
-              style={{
-                padding: '10px 20px',
-                margin: '0 10px',
-                backgroundColor: '#4CAF50',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer'
-              }}
-            >
-              다시 하기
-            </button>
-            <button 
-              onClick={handleQuit}
-              style={{
-                padding: '10px 20px',
-                margin: '0 10px',
-                backgroundColor: '#f44336',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer'
-              }}
-            >
-              나가기
-            </button>
-          </div>
-        </GameOverlay>
-      )}
-
-      {showContinueDialog && (
-        <Dialog>
-          <DialogTitle>게임을 다시 시작하시겠습니까?</DialogTitle>
-          <DialogButtons>
-            <DialogButton variant="confirm" onClick={handleRestart}>
-              계속하기
-            </DialogButton>
-            <DialogButton variant="cancel" onClick={handleQuit}>
-              나가기
-            </DialogButton>
-          </DialogButtons>
-        </Dialog>
-      )}
 
       {showQuitDialog && (
         <Dialog>

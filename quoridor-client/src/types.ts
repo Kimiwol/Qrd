@@ -23,6 +23,7 @@ export interface GameState {
 export interface PlayerInfo {
     id: string;
     username: string;
+    wallsLeft: number;
 }
 
 export interface GameStartData {

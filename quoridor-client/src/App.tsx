@@ -4,6 +4,7 @@ import Login from './components/Login';
 import Register from './components/Register';
 import MainMenu from './components/MainMenu';
 import Game from './components/Game';
+import { SocketProvider } from './contexts/SocketContext';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const token = localStorage.getItem('token');
@@ -23,29 +24,31 @@ function App() {
   });
   
   return (
-    <Router>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route
-          path="/menu"
-          element={
-            <ProtectedRoute>
-              <MainMenu />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/game"
-          element={
-            <ProtectedRoute>
-              <Game />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/" element={<Navigate to="/menu" replace />} />
-      </Routes>
-    </Router>
+    <SocketProvider>
+      <Router>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route
+            path="/menu"
+            element={
+              <ProtectedRoute>
+                <MainMenu />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/game"
+            element={
+              <ProtectedRoute>
+                <Game />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/" element={<Navigate to="/menu" replace />} />
+        </Routes>
+      </Router>
+    </SocketProvider>
   );
 }
 

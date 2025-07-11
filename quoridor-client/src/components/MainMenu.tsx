@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import io from 'socket.io-client';
+import { useSocket } from '../contexts/SocketContext';
 import './MainMenu.css';
 
 interface UserProfile {
@@ -35,6 +35,7 @@ interface Room {
 
 const MainMenu: React.FC = () => {
   const navigate = useNavigate();
+  const { socket, connectSocket } = useSocket();
   const [activeTab, setActiveTab] = useState<'profile' | 'ranked' | 'custom' | 'leaderboard'>('profile');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -48,59 +49,101 @@ const MainMenu: React.FC = () => {
   const [matchmakingType, setMatchmakingType] = useState<'ranked' | 'custom' | null>(null);
   const [notification, setNotification] = useState<{type: 'success' | 'info' | 'error', message: string} | null>(null);
   
-  const socketRef = useRef<any>(null);
   const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:4000';
+
+  const fetchUserProfile = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${apiUrl}/api/profile`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const profile = await response.json();
+        setUserProfile(profile);
+      }
+    } catch (error) {
+      console.error('프로필 조회 실패:', error);
+    }
+  }, [apiUrl]);
+
+  const fetchLeaderboard = useCallback(async () => {
+    try {
+      const response = await fetch(`${apiUrl}/api/leaderboard`);
+      if (response.ok) {
+        const data = await response.json();
+        setLeaderboard(data);
+      }
+    } catch (error) {
+      console.error('랭킹 조회 실패:', error);
+    }
+  }, [apiUrl]);
+
+  const fetchCurrentRoom = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${apiUrl}/api/room/my`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCurrentRoom(data.room);
+      }
+    } catch (error) {
+      console.error('방 정보 조회 실패:', error);
+    }
+  }, [apiUrl]);
+
 
   useEffect(() => {
     fetchUserProfile();
     fetchLeaderboard();
     fetchCurrentRoom();
-    
-    // 소켓 연결 설정
+  }, [fetchUserProfile, fetchLeaderboard, fetchCurrentRoom]);
+
+  // 소켓 연결과 이벤트 리스너를 별도 useEffect로 분리
+  useEffect(() => {
+    // 토큰이 있으면 소켓 연결
     const token = localStorage.getItem('token');
-    if (token) {
-      console.log('소켓 연결 시도:', apiUrl);
-      socketRef.current = io(apiUrl, {
-        auth: { token }
-      });
+    if (token && !socket) {
+      connectSocket();
+    }
+  }, [socket, connectSocket]);
 
-      // 연결 상태 로그
-      socketRef.current.on('connect', () => {
-        console.log('소켓 연결 성공:', socketRef.current?.id);
-      });
+  // 소켓 이벤트 리스너 설정을 별도 useEffect로 분리
+  useEffect(() => {
+    if (!socket) return;
 
-      socketRef.current.on('disconnect', () => {
-        console.log('소켓 연결 해제');
-      });
-
-      socketRef.current.on('error', (error: any) => {
-        console.error('소켓 에러:', error);
-      });
+    console.log('메인메뉴에서 소켓 이벤트 리스너 설정');
 
       // 소켓 이벤트 리스너
-      socketRef.current.on('notification', (data: {type: 'success' | 'info' | 'error', message: string, duration?: number}) => {
+      const handleNotification = (data: {type: 'success' | 'info' | 'error', message: string, duration?: number}) => {
         console.log('알림 받음:', data);
         setNotification(data);
         setTimeout(() => setNotification(null), data.duration || 3000);
-      });
+      };
 
-      socketRef.current.on('queueJoined', (data: {mode: string, queueSize: number}) => {
+      const handleQueueJoined = (data: {mode: string, queueSize: number}) => {
         console.log('✅ 큐 참가 성공:', data);
         setIsMatchmaking(true);
         setMatchmakingType(data.mode as 'ranked' | 'custom');
         setMessage(`매칭 대기 중... (${data.queueSize}명 대기중)`);
-      });
+      };
 
-      socketRef.current.on('queueLeft', () => {
+      const handleQueueLeft = () => {
         console.log('❌ 큐 떠남');
         setIsMatchmaking(false);
         setMatchmakingType(null);
         setMessage('');
-      });
+      };
 
-      socketRef.current.on('gameStarted', (data: {playerId: string, roomId: string, gameState?: any}) => {
+      const handleGameStarted = (data: {playerId: string, roomId: string, gameState?: any}) => {
         console.log('🎮 게임 시작 이벤트 받음:', data);
-        console.log('현재 매칭 상태:', { isMatchmaking, matchmakingType });
         
         // 매칭 상태 즉시 해제
         setIsMatchmaking(false);
@@ -128,84 +171,55 @@ const MainMenu: React.FC = () => {
         } catch (error) {
           console.error('❌ 게임 페이지 이동 실패:', error);
         }
-      });
+      };
 
-      socketRef.current.on('gameState', (gameState: any) => {
+      const handleGameState = (gameState: any) => {
         console.log('게임 상태 받음:', gameState);
         // 게임이 시작되면 게임 페이지로 이동
         navigate('/game', { state: { gameState } });
-      });
+      };
 
-      socketRef.current.on('ratingUpdate', (ratingData: any) => {
+      const handleRatingUpdate = (ratingData: any) => {
         console.log('레이팅 업데이트:', ratingData);
         // 레이팅 업데이트 시 프로필 다시 로드
         fetchUserProfile();
-      });
+      };
 
       // 매칭 관련 추가 이벤트
-      socketRef.current.on('waiting', (message: string) => {
+      const handleWaiting = (message: string) => {
         console.log('대기 메시지:', message);
-      });
+      };
 
-      socketRef.current.on('matchFound', (data: any) => {
+      const handleMatchFound = (data: any) => {
         console.log('매치 찾음:', data);
-      });
+      };
+
+      socket.on('notification', handleNotification);
+      socket.on('queueJoined', handleQueueJoined);
+      socket.on('queueLeft', handleQueueLeft);
+      socket.on('gameStarted', handleGameStarted);
+      socket.on('gameState', handleGameState);
+      socket.on('ratingUpdate', handleRatingUpdate);
+      socket.on('waiting', handleWaiting);
+      socket.on('matchFound', handleMatchFound);
+
+      return () => {
+        // 이벤트 리스너 정리
+        socket.off('notification', handleNotification);
+        socket.off('queueJoined', handleQueueJoined);
+        socket.off('queueLeft', handleQueueLeft);
+        socket.off('gameStarted', handleGameStarted);
+        socket.off('gameState', handleGameState);
+        socket.off('ratingUpdate', handleRatingUpdate);
+        socket.off('waiting', handleWaiting);
+        socket.off('matchFound', handleMatchFound);
+      };
     }
+  , [socket, navigate, fetchUserProfile]);
 
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-      }
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const fetchUserProfile = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${apiUrl}/api/profile`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const profile = await response.json();
-        setUserProfile(profile);
-      }
-    } catch (error) {
-      console.error('프로필 조회 실패:', error);
-    }
-  };
-
-  const fetchLeaderboard = async () => {
-    try {
-      const response = await fetch(`${apiUrl}/api/leaderboard`);
-      if (response.ok) {
-        const data = await response.json();
-        setLeaderboard(data);
-      }
-    } catch (error) {
-      console.error('랭킹 조회 실패:', error);
-    }
-  };
-
-  const fetchCurrentRoom = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${apiUrl}/api/room/my`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setCurrentRoom(data.room);
-      }
-    } catch (error) {
-      console.error('방 정보 조회 실패:', error);
-    }
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    navigate('/login');
   };
 
   const createRoom = async () => {
@@ -302,35 +316,18 @@ const MainMenu: React.FC = () => {
     }
   };
 
-  const startRankedMatch = () => {
-    console.log('랭크 매칭 시작 시도:', { 
-      socket: !!socketRef.current, 
+  const startMatchmaking = (mode: 'ranked' | 'custom') => {
+    console.log(`${mode === 'ranked' ? '랭크' : '일반'} 매칭 시작 시도:`, { 
+      socket: !!socket, 
       isMatchmaking, 
-      socketConnected: socketRef.current?.connected 
+      socketConnected: socket?.connected 
     });
-    if (socketRef.current && !isMatchmaking) {
-      console.log('joinRankedQueue 이벤트 전송');
-      socketRef.current.emit('joinRankedQueue');
+    if (socket && !isMatchmaking) {
+      console.log(`join${mode === 'ranked' ? 'Ranked' : 'Custom'}Queue 이벤트 전송`);
+      socket.emit(`join${mode === 'ranked' ? 'Ranked' : 'Custom'}Queue`);
     } else {
       console.log('매칭 시작 실패:', { 
-        noSocket: !socketRef.current, 
-        alreadyMatchmaking: isMatchmaking 
-      });
-    }
-  };
-
-  const startCustomMatch = () => {
-    console.log('일반 매칭 시작 시도:', { 
-      socket: !!socketRef.current, 
-      isMatchmaking, 
-      socketConnected: socketRef.current?.connected 
-    });
-    if (socketRef.current && !isMatchmaking) {
-      console.log('joinCustomQueue 이벤트 전송');
-      socketRef.current.emit('joinCustomQueue');
-    } else {
-      console.log('매칭 시작 실패:', { 
-        noSocket: !socketRef.current, 
+        noSocket: !socket, 
         alreadyMatchmaking: isMatchmaking 
       });
     }
@@ -338,9 +335,9 @@ const MainMenu: React.FC = () => {
 
   const cancelMatchmaking = () => {
     console.log('매칭 취소 시도:', { isMatchmaking });
-    if (socketRef.current && isMatchmaking) {
+    if (socket && isMatchmaking) {
       console.log('leaveQueue 이벤트 전송');
-      socketRef.current.emit('leaveQueue');
+      socket.emit('leaveQueue');
     }
   };
 
@@ -348,11 +345,6 @@ const MainMenu: React.FC = () => {
     if (currentRoom) {
       navigate('/game', { state: { roomId: currentRoom._id, roomCode: currentRoom.code } });
     }
-  };
-
-  const logout = () => {
-    localStorage.removeItem('token');
-    navigate('/login');
   };
 
   return (
@@ -390,7 +382,7 @@ const MainMenu: React.FC = () => {
         {userProfile && (
           <div className="user-info">
             <span>환영합니다, {userProfile.username}님!</span>
-            <button onClick={logout} className="logout-btn">로그아웃</button>
+            <button onClick={handleLogout} className="logout-btn">로그아웃</button>
           </div>
         )}
       </header>
@@ -449,7 +441,11 @@ const MainMenu: React.FC = () => {
                 </div>
                 <div className="stat">
                   <label>승리</label>
-                  <span>{userProfile.gamesWon}</span>
+                  <span className="wins">{userProfile.gamesWon}</span>
+                </div>
+                <div className="stat">
+                  <label>패배</label>
+                  <span className="losses">{userProfile.gamesPlayed - userProfile.gamesWon}</span>
                 </div>
                 <div className="stat">
                   <label>승률</label>
@@ -496,7 +492,7 @@ const MainMenu: React.FC = () => {
                 <button 
                   onClick={() => {
                     console.log('랭크 매칭 버튼 클릭됨');
-                    startRankedMatch();
+                    startMatchmaking('ranked');
                   }}
                   disabled={loading || isMatchmaking}
                   className="match-btn ranked-match-btn"
@@ -507,13 +503,47 @@ const MainMenu: React.FC = () => {
               </div>
               
               <div className="match-option">
+                <h3>🤖 테스트 매칭</h3>
+                <p>봇과 대전하여 매칭 시스템을 테스트합니다.</p>
+                <p style={{color: '#FF9800', fontSize: '0.9em'}}>개발/디버깅용 기능입니다.</p>
+                <div style={{display: 'flex', gap: '10px', flexDirection: 'column'}}>
+                  <button 
+                    onClick={() => {
+                      console.log('테스트 봇 추가 버튼 클릭됨');
+                      if (socket) {
+                        socket.emit('addTestBot');
+                      }
+                    }}
+                    disabled={loading}
+                    className="match-btn test-match-btn"
+                    style={{touchAction: 'manipulation', background: '#FF9800', color: 'white'}}
+                  >
+                    테스트 봇 추가
+                  </button>
+                  <button 
+                    onClick={() => {
+                      console.log('봇끼리 게임 생성 버튼 클릭됨');
+                      if (socket) {
+                        socket.emit('createBotGame');
+                      }
+                    }}
+                    disabled={loading}
+                    className="match-btn test-match-btn"
+                    style={{touchAction: 'manipulation', background: '#9C27B0', color: 'white'}}
+                  >
+                    봇끼리 게임 테스트
+                  </button>
+                </div>
+              </div>
+              
+              <div className="match-option">
                 <h3>🎮 일반 매칭</h3>
                 <p>빠른 대전으로 연습하세요.</p>
                 <p>레이팅에 영향을 주지 않습니다.</p>
                 <button 
                   onClick={() => {
                     console.log('일반 매칭 버튼 클릭됨');
-                    startCustomMatch();
+                    startMatchmaking('custom');
                   }}
                   disabled={loading || isMatchmaking}
                   className="match-btn custom-match-btn"

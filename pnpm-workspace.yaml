@@ -1,0 +1,3 @@
+packages:
+  - 'quoridor-client'
+  - 'quoridor-server'
