@@ -74,39 +74,27 @@ const HeaderQuitButton = styled.button`
 
 const GameArea = styled.div`
   display: flex;
+  flex-direction: column;
   flex: 1;
-  align-items: stretch;
+  align-items: center;
   justify-content: center;
-  gap: 20px;
-  padding: 20px;
+  gap: 15px;
+  padding: 15px;
   width: 100%;
-  max-width: 1600px;
+  max-width: 1200px;
   margin: 0 auto;
 
-  @media (max-width: 1024px) {
-    flex-direction: column;
-    align-items: center;
+  @media (max-width: 768px) {
+    padding: 10px;
+    gap: 10px;
   }
 `;
 
 const InfoContainer = styled.div`
   display: flex;
-  flex-direction: column;
-  justify-content: space-around;
-  gap: 20px;
-  width: 320px;
-  flex-shrink: 0;
-
-  @media (max-width: 1024px) {
-    flex-direction: row;
-    width: 100%;
-    max-width: 800px;
-    justify-content: center;
-  }
-  @media (max-width: 700px) {
-    flex-direction: column;
-    align-items: center;
-  }
+  justify-content: center;
+  width: 100%;
+  max-width: 600px;
 `;
 
 const BoardArea = styled.div`
@@ -114,7 +102,11 @@ const BoardArea = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
-  min-width: 0;
+  width: 100%;
+  max-width: 80vh; /* 최대 높이를 기준으로 너비 제한 */
+  max-height: 80vh;
+  aspect-ratio: 1 / 1; /* 정사각형 비율 유지 */
+  min-height: 0;
 `;
 
 const PlayerCard = styled.div<{ 
@@ -138,7 +130,8 @@ const PlayerCard = styled.div<{
   max-width: 600px;
   
   @media (max-width: 768px) {
-    padding: 12px 16px;
+    padding: 10px 12px;
+    border-radius: 12px;
   }
 `;
 
@@ -159,10 +152,10 @@ const PlayerAvatar = styled.div<{ isPlayer1: boolean }>`
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   
   @media (max-width: 768px) {
-    width: 40px;
-    height: 40px;
-    font-size: 20px;
-    margin-right: 12px;
+    width: 35px;
+    height: 35px;
+    font-size: 18px;
+    margin-right: 10px;
   }
 `;
 
@@ -180,11 +173,11 @@ const PlayerHeader = styled.div`
 `;
 
 const PlayerName = styled.div`
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   
   @media (max-width: 768px) {
-    font-size: 16px;
+    font-size: 14px;
   }
 `;
 
@@ -200,8 +193,8 @@ const WallIconContainer = styled.div`
 `;
 
 const WallIcon = styled.div<{ isActive: boolean }>`
-  width: 12px;
-  height: 4px;
+  width: 10px;
+  height: 3px;
   background: ${props => props.isActive ? '#8b4513' : 'rgba(139, 69, 19, 0.3)'};
   border-radius: 1px;
   transition: background 0.2s ease;
@@ -336,7 +329,7 @@ const PlayerTimer = styled.div<{ isTimeRunningOut: boolean; isActive: boolean }>
   animation: ${props => props.isTimeRunningOut && props.isActive ? 'pulse 1s infinite' : 'none'};
   opacity: ${props => props.isActive ? 1 : 0.5};
   transition: all 0.3s ease;
-  min-width: 50px;
+  min-width: 45px;
   text-align: center;
 
   @keyframes pulse {
@@ -345,9 +338,9 @@ const PlayerTimer = styled.div<{ isTimeRunningOut: boolean; isActive: boolean }>
   }
   
   @media (max-width: 768px) {
-    font-size: 12px;
-    padding: 3px 6px;
-    min-width: 40px;
+    font-size: 11px;
+    padding: 2px 5px;
+    min-width: 35px;
   }
 `;
 
@@ -605,18 +598,11 @@ function Game() {
     return gameState;
   };
 
-  const renderPlayerCard = (player: any, position: 'top' | 'bottom') => {
+  const renderPlayerCard = (player: Player, position: 'top' | 'bottom') => {
     // 원본 gameState의 currentTurn과 비교해야 함 (변환된 상태가 아닌 원본 상태 사용)
     const isCurrentTurn = gameState.currentTurn === player.id;
     const isPlayer1 = player.id === 'player1';
     const isMe = player.id === playerId;
-    
-    console.log('플레이어 카드 렌더링:', {
-      playerId: player.id,
-      currentTurn: gameState.currentTurn,
-      isCurrentTurn,
-      myPlayerId: playerId
-    });
     
     const wallIcons = Array.from({ length: 10 }, (_, i) => (
       <WallIcon key={i} isActive={i < player.wallsLeft} />
@@ -625,44 +611,30 @@ function Game() {
     // 플레이어 이름 결정 로직 개선
     let playerName = '알 수 없음';
     
-    console.log('🏷️ 플레이어 이름 결정:', {
-      playerId: player.id,
-      myPlayerId: playerId,
-      isMe,
-      playerInfo,
-      localStorage: localStorage.getItem('user')
-    });
-    
     if (isMe) {
       // 내 정보인 경우
       if (playerInfo?.me?.username) {
         playerName = playerInfo.me.username;
-        console.log('✅ playerInfo에서 내 이름 찾음:', playerName);
       } else {
         // localStorage에서 사용자 정보 가져오기
         try {
           const userStr = localStorage.getItem('user');
           if (userStr) {
             const user = JSON.parse(userStr);
-            playerName = user.username || '나';
-            console.log('✅ localStorage에서 내 이름 찾음:', playerName);
+            playerName = user.username || `나 (${player.id})`;
           } else {
-            playerName = '나';
-            console.log('⚠️ localStorage에 user 정보 없음');
+            playerName = `나 (${player.id})`;
           }
         } catch (error) {
-          console.error('❌ localStorage 파싱 에러:', error);
-          playerName = '나';
+          playerName = `나 (${player.id})`;
         }
       }
     } else {
       // 상대방 정보인 경우
       if (playerInfo?.opponent?.username) {
         playerName = playerInfo.opponent.username;
-        console.log('✅ playerInfo에서 상대방 이름 찾음:', playerName);
       } else {
-        playerName = '상대방';
-        console.log('⚠️ 상대방 정보 없음, 기본값 사용');
+        playerName = `상대 (${player.id})`;
       }
     }
 
@@ -714,6 +686,11 @@ function Game() {
       </Header>
       
       <GameArea>
+        {opponentPlayer && (
+          <InfoContainer>
+            {renderPlayerCard(opponentPlayer, 'top')}
+          </InfoContainer>
+        )}
         <BoardArea>
           <Board 
             gameState={transformedGameState} 
@@ -723,10 +700,11 @@ function Game() {
             isMyTurn={gameState.currentTurn === playerId}
           />
         </BoardArea>
-        <InfoContainer>
-          {opponentPlayer && renderPlayerCard(opponentPlayer, 'top')}
-          {myPlayer && renderPlayerCard(myPlayer, 'bottom')}
-        </InfoContainer>
+        {myPlayer && (
+          <InfoContainer>
+            {renderPlayerCard(myPlayer, 'bottom')}
+          </InfoContainer>
+        )}
       </GameArea>
 
       {winner && (
