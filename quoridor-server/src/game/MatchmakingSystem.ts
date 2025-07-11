@@ -40,7 +40,8 @@ export class MatchmakingSystem {
             // 새로 추가
             queue.push({ ...request, timestamp: Date.now() });
             console.log(`[Matchmaking] 큐 추가: ${request.userId} (${gameMode}) - 현재 큐 크기: ${queue.length}`);
-            request.socket.emit('notification', { type: 'info', message: `${gameMode === GameMode.RANKED ? '랭크' : '일반'} 게임 대기열에 참가했습니다.` });
+            // request.socket.emit('notification', { type: 'info', message: `${gameMode === GameMode.RANKED ? '랭크' : '일반'} 게임 대기열에 참가했습니다.` });
+            request.socket.emit('queueJoined', { mode: gameMode, queueSize: queue.length });
         }
     }
 
