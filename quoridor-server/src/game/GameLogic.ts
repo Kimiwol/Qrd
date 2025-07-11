@@ -72,34 +72,68 @@ export class GameLogic {
 
         // 이미 설치된 벽과 겹치는지 확인
         const isOverlapping = gameState.walls.some(existingWall => {
-            return wall.isHorizontal === existingWall.isHorizontal &&
-                   wall.position.x === existingWall.position.x && 
-                   wall.position.y === existingWall.position.y;
+            // 같은 위치, 같은 방향의 벽이 있는지 확인
+            if (wall.position.x === existingWall.position.x && wall.position.y === existingWall.position.y && wall.orientation === existingWall.orientation) {
+                return true;
+            }
+
+            // 교차하는 벽이 있는지 확인 (중앙 교차점)
+            if (wall.position.x === existingWall.position.x && wall.position.y === existingWall.position.y) {
+                return true;
+            }
+
+            // 인접한 벽과 겹치는지 확인
+            if (wall.orientation === 'horizontal' && existingWall.orientation === 'horizontal') {
+                return Math.abs(wall.position.x - existingWall.position.x) < 2 && wall.position.y === existingWall.position.y;
+            }
+            if (wall.orientation === 'vertical' && existingWall.orientation === 'vertical') {
+                return Math.abs(wall.position.y - existingWall.position.y) < 2 && wall.position.x === existingWall.position.x;
+            }
+
+            return false;
         });
 
-        return !isOverlapping;
+        if (isOverlapping) {
+            return false;
+        }
+
+        // 벽이 경로를 완전히 막는지 확인
+        const tempGameState = {
+            ...gameState,
+            walls: [...gameState.walls, wall]
+        };
+
+        for (const p of tempGameState.players) {
+            if (!this.hasPathToGoal(p, tempGameState.walls)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     // 이동이 벽에 막혀있는지 확인
     static isBlockedByWall(from: Position, to: Position, walls: Wall[]): boolean {
-        const minX = Math.min(from.x, to.x);
-        const maxX = Math.max(from.x, to.x);
-        const minY = Math.min(from.y, to.y);
-        const maxY = Math.max(from.y, to.y);
-
-        return walls.some(wall => {
-            if (wall.isHorizontal) {
-                // 수평 벽은 위아래 이동을 막음
-                return wall.position.y === minY &&
-                       wall.position.x <= maxX &&
-                       from.y !== to.y;
-            } else {
-                // 수직 벽은 좌우 이동을 막음
-                return wall.position.x === minX &&
-                       wall.position.y <= maxY &&
-                       from.x !== to.x;
-            }
-        });
+        // 이동이 수평인지 수직인지 확인
+        const isHorizontalMove = from.y === to.y;
+        
+        if (isHorizontalMove) {
+            // 수평 이동 (좌우)
+            const wallX = Math.min(from.x, to.x);
+            return walls.some(wall => 
+                wall.orientation === 'vertical' &&
+                wall.position.x === wallX &&
+                (wall.position.y === from.y || wall.position.y === from.y - 1)
+            );
+        } else {
+            // 수직 이동 (상하)
+            const wallY = Math.min(from.y, to.y);
+            return walls.some(wall => 
+                wall.orientation === 'horizontal' &&
+                wall.position.y === wallY &&
+                (wall.position.x === from.x || wall.position.x === from.x - 1)
+            );
+        }
     }
 
     // 경로가 존재하는지 확인 (BFS 사용)
@@ -135,21 +169,11 @@ export class GameLogic {
                     continue;
                 }
 
-                // 벽에 막혀있는지 확인
-                const isBlocked = walls.some(wall => {
-                    if (wall.isHorizontal) {
-                        return wall.position.y === Math.min(pos.y, move.y) &&
-                               pos.x === move.x &&
-                               wall.position.x <= pos.x;
-                    } else {
-                        return wall.position.x === Math.min(pos.x, move.x) &&
-                               pos.y === move.y &&
-                               wall.position.y <= pos.y;
+                if (!this.isBlockedByWall(pos, move, walls)) {
+                    const moveKey = `${move.x},${move.y}`;
+                    if (!visited.has(moveKey)) {
+                        queue.push(move);
                     }
-                });
-
-                if (!isBlocked) {
-                    queue.push(move);
                 }
             }
         }

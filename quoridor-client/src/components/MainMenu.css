@@ -168,12 +168,8 @@
 .win-loss-container {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
-}
-
-.win-loss-container .separator {
-  color: #ccc;
-  font-weight: bold;
 }
 
 /* 랭크 게임 섹션 */

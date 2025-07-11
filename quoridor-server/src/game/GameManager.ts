@@ -405,7 +405,7 @@ export class GameManager {
         }
     }
 
-    private handleWallPlacement(socket: Socket, { position, isHorizontal }: { position: Position; isHorizontal: boolean }) {
+    private handleWallPlacement(socket: Socket, { position, orientation }: { position: Position; orientation: 'horizontal' | 'vertical' }) {
         const validation = this.validateGameAction(socket);
         if (!validation) return;
 
@@ -415,7 +415,7 @@ export class GameManager {
         const currentPlayer = gameState.players.find(p => p.id === playerId);
         if (!currentPlayer) return;
 
-        const newWall: Wall = { position, isHorizontal };
+        const newWall: Wall = { position, orientation };
 
         // 벽 설치 유효성 검사
         if (GameLogic.isValidWallPlacement(newWall, gameState, currentPlayer)) {
@@ -438,7 +438,19 @@ export class GameManager {
                 
                 // 새로운 턴 타이머 시작
                 this.startTurnTimer(room.id);
+
+                // 다음 턴이 봇이면 봇 이동
+                const nextPlayerData = Array.from(room.players.values()).find(p => p.playerId === gameState.currentTurn);
+                if (nextPlayerData && (nextPlayerData.userId === 'bot_player_001' || nextPlayerData.userId === 'bot_player_002')) {
+                    setTimeout(() => {
+                        this.makeBotMove(room.id, nextPlayerData.socket);
+                    }, 500 + Math.random() * 1000);
+                }
+            } else {
+                socket.emit('notification', { type: 'error', message: '벽으로 상대방의 길을 막을 수 없습니다.' });
             }
+        } else {
+            socket.emit('notification', { type: 'error', message: '유효하지 않은 벽 위치입니다.' });
         }
     }
 

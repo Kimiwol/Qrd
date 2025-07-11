@@ -11,7 +11,7 @@ export interface Player {
 
 export interface Wall {
     position: Position;
-    isHorizontal: boolean;
+    orientation: 'horizontal' | 'vertical';
 }
 
 export interface GameState {

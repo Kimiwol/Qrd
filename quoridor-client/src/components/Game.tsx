@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import styled from 'styled-components';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Board from './Board';
-import { GameState, Position, PlayerInfo, GameStartData, Wall } from '../types';
+import { GameState, Position, PlayerInfo, GameStartData, Wall, Player } from '../types';
 import { useSocket } from '../contexts/SocketContext';
 
 const GameContainer = styled.div`
@@ -74,18 +74,47 @@ const HeaderQuitButton = styled.button`
 
 const GameArea = styled.div`
   display: flex;
-  flex-direction: column;
-  align-items: center;
   flex: 1;
-  padding: 0 20px;
-  max-width: 800px;
+  align-items: stretch;
+  justify-content: center;
+  gap: 20px;
+  padding: 20px;
+  width: 100%;
+  max-width: 1600px;
   margin: 0 auto;
-  gap: 15px;
-  
-  @media (max-width: 768px) {
-    gap: 10px;
-    padding: 0 10px;
+
+  @media (max-width: 1024px) {
+    flex-direction: column;
+    align-items: center;
   }
+`;
+
+const InfoContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  gap: 20px;
+  width: 320px;
+  flex-shrink: 0;
+
+  @media (max-width: 1024px) {
+    flex-direction: row;
+    width: 100%;
+    max-width: 800px;
+    justify-content: center;
+  }
+  @media (max-width: 700px) {
+    flex-direction: column;
+    align-items: center;
+  }
+`;
+
+const BoardArea = styled.div`
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 0;
 `;
 
 const PlayerCard = styled.div<{ 
@@ -576,7 +605,7 @@ function Game() {
     return gameState;
   };
 
-  const renderPlayerCard = (player: any, position: 'top' | 'bottom', transformedState: GameState) => {
+  const renderPlayerCard = (player: any, position: 'top' | 'bottom') => {
     // 원본 gameState의 currentTurn과 비교해야 함 (변환된 상태가 아닌 원본 상태 사용)
     const isCurrentTurn = gameState.currentTurn === player.id;
     const isPlayer1 = player.id === 'player1';
@@ -671,54 +700,48 @@ function Game() {
   };
 
   // 플레이어 정보는 원본 게임 상태에서 가져오고, 화면 표시용 상태는 따로 변환
-  const currentGameState = getGameState();
-  const myPlayer = gameState.players.find((p: any) => p.id === playerId);
-  const opponentPlayer = gameState.players.find((p: any) => p.id !== playerId);
-
-  console.log('🎮 플레이어 정보 확인:', {
-    playerId,
-    myPlayer,
-    opponentPlayer,
-    playerInfo,
-    gameState: gameState.players
-  });
+  const transformedGameState = getGameState();
+  const myPlayer = transformedGameState.players.find((p: Player) => p.id === playerId);
+  const opponentPlayer = transformedGameState.players.find((p: Player) => p.id !== playerId);
 
   return (
     <GameContainer>
       <Header>
-        <Title>🏛️ Quoridor</Title>
+        <Title>Quoridor</Title>
         <HeaderQuitButton onClick={showQuitConfirmDialog}>
-          나가기
+          기권하기
         </HeaderQuitButton>
       </Header>
-
-      {showTimeoutNotification && (
-        <Notification>
-          ⏰ 시간 초과로 턴이 넘어갔습니다!
-        </Notification>
-      )}
-
+      
       <GameArea>
-        {/* 상대방 프로필 (상단) */}
-        {opponentPlayer ? renderPlayerCard(opponentPlayer, 'top', currentGameState) : (
-          <div>상대방 정보 없음</div>
-        )}
-
-        {/* 게임 보드 (중앙) */}
-        <BoardWrapper>
-          <Board
-            gameState={currentGameState}
-            playerId={playerId}
-            isMyTurn={gameState.currentTurn === playerId}
+        <BoardArea>
+          <Board 
+            gameState={transformedGameState} 
             onCellClick={handleCellClick}
             onWallPlace={handleWallPlacement}
+            playerId={playerId}
+            isMyTurn={gameState.currentTurn === playerId}
           />
-        </BoardWrapper>
-        {/* 내 프로필 (하단) */}
-        {myPlayer ? renderPlayerCard(myPlayer, 'bottom', currentGameState) : (
-          <div>내 정보 없음</div>
-        )}
+        </BoardArea>
+        <InfoContainer>
+          {opponentPlayer && renderPlayerCard(opponentPlayer, 'top')}
+          {myPlayer && renderPlayerCard(myPlayer, 'bottom')}
+        </InfoContainer>
       </GameArea>
+
+      {winner && (
+        <Dialog>
+          <DialogTitle>게임 종료</DialogTitle>
+          <DialogMessage>
+            {winner === playerId ? '축하합니다! 당신이 이겼습니다!' : '아쉽게도 당신이 졌습니다.'}
+          </DialogMessage>
+          <DialogButtons>
+            <DialogButton variant="confirm" onClick={() => navigate('/menu')}>
+              확인
+            </DialogButton>
+          </DialogButtons>
+        </Dialog>
+      )}
 
       {showQuitDialog && (
         <Dialog>
