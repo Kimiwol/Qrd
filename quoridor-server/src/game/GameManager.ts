@@ -429,10 +429,10 @@ export class GameManager {
             playerInfo: { me: player2Info, opponent: player1Info }
         };
         
-        console.log(`📤 Player1 (${player1Socket.id})에게 'gameStarted' 전송`);
+        console.log(`📤 Player1 (${player1Socket.id}, ${(player1Socket as any).username})에게 'gameStarted' 전송:`, gameStartData1);
         player1Socket.emit('gameStarted', gameStartData1);
         
-        console.log(`📤 Player2 (${player2Socket.id})에게 'gameStarted' 전송`);
+        console.log(`📤 Player2 (${player2Socket.id}, ${(player2Socket as any).username})에게 'gameStarted' 전송:`, gameStartData2);
         player2Socket.emit('gameStarted', gameStartData2);
         
         // 게임 상태는 gameStarted 이벤트에 포함되어 있으므로 중복 전송 제거

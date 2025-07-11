@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import styled from 'styled-components';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import Board from './Board';
 import { GameState, Position, PlayerInfo, GameStartData, Wall, Player } from '../types';
 import { useSocket } from '../contexts/SocketContext';
@@ -347,6 +347,7 @@ const PlayerTimer = styled.div<{ isTimeRunningOut: boolean; isActive: boolean }>
 function Game() {
   const { socket } = useSocket();
   const navigate = useNavigate();
+  const { roomId } = useParams<{ roomId: string }>();
   const location = useLocation();
 
   const initialState = location.state as GameStartData | null;
@@ -365,41 +366,13 @@ function Game() {
   const [showContinueDialog, setShowContinueDialog] = useState(false);
   const [showQuitDialog, setShowQuitDialog] = useState(false);
 
-  // 모든 필수 데이터가 준비되었는지 확인
+  // Redirect to menu if the game page is loaded without necessary state
   useEffect(() => {
-    console.log('데이터 상태 확인:', {
-      socket: !!socket,
-      gameState: !!gameState,
-      playerId: !!playerId,
-      playerInfo: !!playerInfo
-    });
-    if (socket && gameState && playerId && playerInfo) {
-      setIsReady(true);
-      console.log('✅ 게임 렌더링 준비 완료!');
-    } else {
-      setIsReady(false);
-      console.log('⏳ 아직 렌더링 준비 안됨. 데이터 기다리는 중...');
-      // 데이터가 부족할 경우 서버에 재요청
-      if (socket && initialState?.roomId && !isReady) {
-        console.log(`[Game.tsx] 데이터 부족, 서버에 초기 상태 재요청: ${initialState.roomId}`);
-        socket.emit('requestInitialGameState', initialState.roomId);
-      }
+    if (!initialState) {
+      console.error("Game.tsx: No initial state found. Redirecting to menu.");
+      navigate('/menu', { replace: true });
     }
-  }, [socket, gameState, playerId, playerInfo, isReady, initialState?.roomId]);
-
-
-  // Redirect to menu if the game page is loaded without necessary state after a delay
-  useEffect(() => {
-    if (!location.state) {
-      const timer = setTimeout(() => {
-        if (!isReady) {
-          console.error("Game.tsx: 3초 후에도 데이터 없음. 메뉴로 리디렉션.");
-          navigate('/menu', { replace: true });
-        }
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [location.state, isReady, navigate]);
+  }, [initialState, navigate]);
 
 
   const resetTimer = useCallback(() => {
@@ -456,8 +429,8 @@ function Game() {
       // But since both players are navigated from MainMenu, this might just be for safety.
       socket.on('gameStarted', (data: GameStartData) => {
         console.log('🎮 게임 시작 데이터 상세 (from socket event):', data);
-        // 상태가 아직 설정되지 않았을 때만 업데이트
-        if (!gameState || !playerId || !playerInfo) {
+        // Only update if the state is not already set or for a different room
+        if (!playerId || !playerInfo) {
             setPlayerId(data.playerId);
             setGameState(data.gameState);
             setPlayerInfo(data.playerInfo);

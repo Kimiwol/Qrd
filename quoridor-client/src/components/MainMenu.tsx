@@ -167,7 +167,7 @@ const MainMenu: React.FC = () => {
         
         try {
           // 게임 페이지로 이동
-          navigate('/game', { 
+          navigate(`/game/${data.roomId}`, { 
             state: { 
               playerId: data.playerId, 
               roomId: data.roomId,
