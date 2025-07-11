@@ -46,6 +46,7 @@ const MainMenu: React.FC = () => {
   
   // 랭크 매칭 관련 상태
   const [isMatchmaking, setIsMatchmaking] = useState(false);
+  const [matchmakingStatus, setMatchmakingStatus] = useState<'searching' | 'found' | 'starting'>('searching');
   const [matchmakingType, setMatchmakingType] = useState<'ranked' | 'custom' | null>(null);
   const [notification, setNotification] = useState<{type: 'success' | 'info' | 'error', message: string} | null>(null);
   
@@ -131,6 +132,7 @@ const MainMenu: React.FC = () => {
       const handleQueueJoined = (data: {mode: string, queueSize: number}) => {
         console.log('✅ 큐 참가 성공:', data);
         setIsMatchmaking(true);
+        setMatchmakingStatus('searching');
         setMatchmakingType(data.mode as 'ranked' | 'custom');
         setMessage(`매칭 대기 중... (${data.queueSize}명 대기중)`);
       };
@@ -142,12 +144,17 @@ const MainMenu: React.FC = () => {
         setMessage('');
       };
 
+      const handleMatchFound = (data: { opponent: string }) => {
+        console.log(`✅ 매치 발견! 상대: ${data.opponent}`);
+        setMatchmakingStatus('found');
+        setMessage(`상대를 찾았습니다: ${data.opponent}. 곧 게임을 시작합니다...`);
+      };
+
       const handleGameStarted = (data: {playerId: string, roomId: string, gameState?: any, playerInfo?: any}) => {
         console.log('🎮 게임 시작 이벤트 받음:', data);
         
         // 매칭 상태 즉시 해제
-        setIsMatchmaking(false);
-        setMatchmakingType(null);
+        setMatchmakingStatus('starting');
         
         // 더 구체적인 로깅
         console.log('🚀 게임 화면으로 이동 시도:', {
@@ -192,29 +199,25 @@ const MainMenu: React.FC = () => {
         console.log('대기 메시지:', message);
       };
 
-      const handleMatchFound = (data: any) => {
-        console.log('매치 찾음:', data);
-      };
-
       socket.on('notification', handleNotification);
       socket.on('queueJoined', handleQueueJoined);
       socket.on('queueLeft', handleQueueLeft);
+      socket.on('matchFound', handleMatchFound); // 새로 추가된 이벤트 핸들러
       socket.on('gameStarted', handleGameStarted);
       socket.on('gameState', handleGameState);
       socket.on('ratingUpdate', handleRatingUpdate);
       socket.on('waiting', handleWaiting);
-      socket.on('matchFound', handleMatchFound);
 
       return () => {
         // 이벤트 리스너 정리
         socket.off('notification', handleNotification);
         socket.off('queueJoined', handleQueueJoined);
         socket.off('queueLeft', handleQueueLeft);
+        socket.off('matchFound', handleMatchFound); // 정리 추가
         socket.off('gameStarted', handleGameStarted);
         socket.off('gameState', handleGameState);
         socket.off('ratingUpdate', handleRatingUpdate);
         socket.off('waiting', handleWaiting);
-        socket.off('matchFound', handleMatchFound);
       };
     }
   , [socket, navigate, fetchUserProfile]);
@@ -362,16 +365,31 @@ const MainMenu: React.FC = () => {
       {isMatchmaking && (
         <div className="matchmaking-overlay" onClick={(e) => e.stopPropagation()}>
           <div className="matchmaking-popup">
-            <h3>🔍 매칭 중...</h3>
-            <p>{matchmakingType === 'ranked' ? '랭크 게임' : '일반 게임'} 상대방을 찾고 있습니다.</p>
-            <p style={{fontSize: '0.8rem', color: '#999'}}>
-              상태: {isMatchmaking ? '매칭중' : '대기'} | 타입: {matchmakingType}
-            </p>
-            <div className="loading-spinner"></div>
+            {matchmakingStatus === 'searching' && (
+              <>
+                <h3>🔍 매칭 중...</h3>
+                <p>{matchmakingType === 'ranked' ? '랭크 게임' : '일반 게임'} 상대방을 찾고 있습니다.</p>
+                <div className="loading-spinner"></div>
+              </>
+            )}
+            {matchmakingStatus === 'found' && (
+              <>
+                <h3>✅ 매치 성사!</h3>
+                <p>{message}</p>
+                <div className="loading-spinner"></div>
+              </>
+            )}
+            {matchmakingStatus === 'starting' && (
+              <>
+                <h3>🚀 게임 시작 중...</h3>
+                <p>게임 화면으로 이동합니다.</p>
+              </>
+            )}
             <button 
               onClick={cancelMatchmaking} 
               className="cancel-btn"
               style={{touchAction: 'manipulation'}}
+              disabled={matchmakingStatus !== 'searching'}
             >
               매칭 취소
             </button>

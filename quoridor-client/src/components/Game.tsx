@@ -349,18 +349,13 @@ function Game() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Initialize state directly from location.state to prevent initial render with empty data
   const initialState = location.state as GameStartData | null;
 
-  const [gameState, setGameState] = useState<GameState>(
-    initialState?.gameState ?? { players: [], walls: [], currentTurn: '' }
-  );
-  const [playerId, setPlayerId] = useState<string | null>(
-    initialState?.playerId ?? null
-  );
-  const [playerInfo, setPlayerInfo] = useState<{ me: PlayerInfo; opponent: PlayerInfo; } | null>(
-    initialState?.playerInfo ?? null
-  );
+  const [gameState, setGameState] = useState<GameState | null>(initialState?.gameState ?? null);
+  const [playerId, setPlayerId] = useState<string | null>(initialState?.playerId ?? null);
+  const [playerInfo, setPlayerInfo] = useState<{ me: PlayerInfo; opponent: PlayerInfo } | null>(initialState?.playerInfo ?? null);
+  
+  const [isReady, setIsReady] = useState(false); // 렌더링 준비 상태 추가
 
   const [winner, setWinner] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(false);
@@ -370,13 +365,41 @@ function Game() {
   const [showContinueDialog, setShowContinueDialog] = useState(false);
   const [showQuitDialog, setShowQuitDialog] = useState(false);
 
-  // Redirect to menu if the game page is loaded without necessary state
+  // 모든 필수 데이터가 준비되었는지 확인
   useEffect(() => {
-    if (!initialState) {
-      console.error("Game.tsx: No initial state found. Redirecting to menu.");
-      navigate('/menu', { replace: true });
+    console.log('데이터 상태 확인:', {
+      socket: !!socket,
+      gameState: !!gameState,
+      playerId: !!playerId,
+      playerInfo: !!playerInfo
+    });
+    if (socket && gameState && playerId && playerInfo) {
+      setIsReady(true);
+      console.log('✅ 게임 렌더링 준비 완료!');
+    } else {
+      setIsReady(false);
+      console.log('⏳ 아직 렌더링 준비 안됨. 데이터 기다리는 중...');
+      // 데이터가 부족할 경우 서버에 재요청
+      if (socket && initialState?.roomId && !isReady) {
+        console.log(`[Game.tsx] 데이터 부족, 서버에 초기 상태 재요청: ${initialState.roomId}`);
+        socket.emit('requestInitialGameState', initialState.roomId);
+      }
     }
-  }, [initialState, navigate]);
+  }, [socket, gameState, playerId, playerInfo, isReady, initialState?.roomId]);
+
+
+  // Redirect to menu if the game page is loaded without necessary state after a delay
+  useEffect(() => {
+    if (!location.state) {
+      const timer = setTimeout(() => {
+        if (!isReady) {
+          console.error("Game.tsx: 3초 후에도 데이터 없음. 메뉴로 리디렉션.");
+          navigate('/menu', { replace: true });
+        }
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [location.state, isReady, navigate]);
 
 
   const resetTimer = useCallback(() => {
@@ -386,7 +409,7 @@ function Game() {
   useEffect(() => {
     let timer: NodeJS.Timeout;
     
-    if (!isPaused && gameState.currentTurn && !winner) {
+    if (!isPaused && gameState?.currentTurn && !winner) {
       timer = setInterval(() => {
         setTimeLeft(prev => {
           if (prev <= 1) {
@@ -403,7 +426,7 @@ function Game() {
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [isPaused, gameState.currentTurn, winner, socket, playerId]);
+  }, [isPaused, gameState?.currentTurn, winner, socket, playerId]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -433,8 +456,8 @@ function Game() {
       // But since both players are navigated from MainMenu, this might just be for safety.
       socket.on('gameStarted', (data: GameStartData) => {
         console.log('🎮 게임 시작 데이터 상세 (from socket event):', data);
-        // Only update if the state is not already set or for a different room
-        if (!playerId || !playerInfo) {
+        // 상태가 아직 설정되지 않았을 때만 업데이트
+        if (!gameState || !playerId || !playerInfo) {
             setPlayerId(data.playerId);
             setGameState(data.gameState);
             setPlayerInfo(data.playerInfo);
@@ -502,7 +525,7 @@ function Game() {
 
   const handleCellClick = (position: Position) => {
     console.log(`[Game.tsx] handleCellClick received from Board:`, position);
-    if (socket && gameState.currentTurn === playerId && !winner && !isPaused) {
+    if (socket && gameState?.currentTurn === playerId && !winner && !isPaused) {
       let serverPosition = position;
       // Player2인 경우, 서버의 절대 좌표계(player1 기준)로 변환
       if (playerId === 'player2') {
@@ -519,7 +542,7 @@ function Game() {
     } else {
       console.warn(`[Game.tsx] Move ignored. Conditions not met:`, {
         socketExists: !!socket,
-        isMyTurn: gameState.currentTurn === playerId,
+        isMyTurn: gameState?.currentTurn === playerId,
         isWinner: !!winner,
         isPaused: isPaused,
       });
@@ -527,7 +550,7 @@ function Game() {
   };
 
   const handleWallPlacement = (wall: Wall) => {
-    if (socket && gameState.currentTurn === playerId && !winner && !isPaused) {
+    if (socket && gameState?.currentTurn === playerId && !winner && !isPaused) {
       let serverWall = wall;
       // Player2인 경우, 서버의 절대 좌표계(player1 기준)로 변환
       if (playerId === 'player2') {
@@ -566,7 +589,9 @@ function Game() {
   };
 
   // 게임 상태를 플레이어 관점으로 변환 (각자 하단에서 시작하도록)
-  const getGameState = (): GameState => {
+  const getGameState = (): GameState | null => {
+    if (!gameState) return null;
+
     if (playerId === 'player2') {
       // Player2인 경우 보드를 180도 회전하여 표시
       const transformedState = {
@@ -592,6 +617,7 @@ function Game() {
   };
 
   const renderPlayerCard = (player: Player, position: 'top' | 'bottom') => {
+    if (!gameState) return null;
     // 원본 gameState의 currentTurn과 비교해야 함 (변환된 상태가 아닌 원본 상태 사용)
     const isCurrentTurn = gameState.currentTurn === player.id;
     const isPlayer1 = player.id === 'player1';
@@ -650,7 +676,7 @@ function Game() {
               isTimeRunningOut={timeLeft <= 10} 
               isActive={isCurrentTurn}
             >
-              {isCurrentTurn ? `⏱️ ${timeLeft}초` : '대기 중'}
+              {isCurrentTurn && gameState ? `⏱️ ${timeLeft}초` : '대기 중'}
             </PlayerTimer>
           </PlayerHeader>
           <WallInfo>
@@ -664,8 +690,27 @@ function Game() {
     );
   };
 
+  // 로딩 상태 처리
+  if (!isReady) {
+    return (
+      <GameOverlay>
+        <div className="loading-spinner" style={{marginBottom: '20px'}}></div>
+        게임에 접속하는 중입니다...
+      </GameOverlay>
+    );
+  }
+
   // 플레이어 정보는 원본 게임 상태에서 가져오고, 화면 표시용 상태는 따로 변환
   const transformedGameState = getGameState();
+  if (!transformedGameState) {
+      console.error("Render crash: transformedGameState is null even when ready.");
+      return (
+        <GameOverlay>
+            오류가 발생했습니다. 메뉴로 돌아갑니다...
+        </GameOverlay>
+      );
+  }
+
   const myPlayer = transformedGameState.players.find((p: Player) => p.id === playerId);
   const opponentPlayer = transformedGameState.players.find((p: Player) => p.id !== playerId);
 
@@ -690,7 +735,7 @@ function Game() {
             onCellClick={handleCellClick}
             onWallPlace={handleWallPlacement}
             playerId={playerId}
-            isMyTurn={gameState.currentTurn === playerId}
+            isMyTurn={gameState!.currentTurn === playerId}
           />
         </BoardArea>
         {myPlayer && (

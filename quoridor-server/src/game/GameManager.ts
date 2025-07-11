@@ -172,6 +172,8 @@ export class GameManager {
             this.handleCreateBotGame(socket);
         });
         
+        socket.on('requestInitialGameState', (roomId) => this.handleRequestInitialGameState(socket, roomId));
+        
         socket.on('disconnect', () => this.handlePlayerDisconnect(socket));
 
         console.log(`플레이어 ${userId} 매칭 대기 중...`);
@@ -212,14 +214,43 @@ export class GameManager {
         console.log(`[GameManager] ${mode} 게임 매칭 시도...`);
         const match = this.matchmakingSystem.findMatch(mode);
         if (match) {
-            console.log(`[GameManager] ✅ 매치 발견!`, {
+            console.log(`[GameManager] ✅ 매치 발견! 플레이어 확인 및 게임 생성 준비...`, {
                 player1: (match.player1.socket as any).userId,
                 player2: (match.player2.socket as any).userId,
             });
-            this.createGame(match.player1.socket, match.player2.socket, mode);
+            // 바로 createGame을 호출하는 대신, 확인 절차를 거칩니다.
+            this.confirmAndCreateGame(match.player1.socket, match.player2.socket, mode);
         } else {
             console.log(`[GameManager] 🤷‍♂️ 아직 매칭할 상대가 없습니다.`);
         }
+    }
+
+    private confirmAndCreateGame(player1Socket: Socket, player2Socket: Socket, mode: GameMode) {
+        // 1. 두 소켓이 여전히 연결되어 있는지 확인합니다.
+        if (!player1Socket.connected || !player2Socket.connected) {
+            console.error('[GameManager] ❌ 매치된 플레이어 중 한 명의 연결이 끊어져 게임을 생성할 수 없습니다.', {
+                p1_connected: player1Socket.connected,
+                p2_connected: player2Socket.connected,
+            });
+            // 여기서 연결이 끊긴 플레이어를 큐에서 다시 제거하는 로직을 추가할 수 있습니다.
+            // 예: if (!player1Socket.connected) this.matchmakingSystem.removePlayer(player1Socket.id);
+            return;
+        }
+
+        console.log('[GameManager] ✅ 두 플레이어 모두 연결 확인됨. matchFound 이벤트 전송.');
+
+        // 2. 각 플레이어에게 매치 상대를 찾았음을 알립니다.
+        const player1Username = (player1Socket as any).username || 'Player 1';
+        const player2Username = (player2Socket as any).username || 'Player 2';
+
+        player1Socket.emit('matchFound', { opponent: player2Username });
+        player2Socket.emit('matchFound', { opponent: player1Username });
+
+        // 3. 짧은 지연 후 게임을 생성하여 클라이언트가 UI를 업데이트할 시간을 줍니다.
+        setTimeout(() => {
+            console.log('[GameManager] 🚀 지연 후 createGame 호출.');
+            this.createGame(player1Socket, player2Socket, mode);
+        }, 500); // 500ms 지연
     }
 
     private async handleGetLeaderboard(callback: (leaderboard: any) => void) {
@@ -704,5 +735,49 @@ export class GameManager {
         // 룸 삭제
         this.rooms.delete(room.id);
         console.log(`[GameManager] 🧹 룸 삭제됨: ${room.id}. 현재 방 개수: ${this.rooms.size}`);
+    }
+
+    private handleRequestInitialGameState(socket: Socket, roomId: string) {
+        console.log(`[GameManager] 🔄 ${socket.id}가 방 ${roomId}의 초기 게임 상태를 요청합니다.`);
+        const room = this.rooms.get(roomId);
+        const userId = (socket as any).userId;
+    
+        if (!room) {
+            console.error(`[GameManager] ❌ 요청된 방(${roomId})을 찾을 수 없습니다.`);
+            socket.emit('notification', { type: 'error', message: '참여하려는 게임을 찾을 수 없습니다.' });
+            return;
+        }
+    
+        const playerData = Array.from(room.players.values()).find(p => p.socket.id === socket.id);
+    
+        if (!playerData) {
+            console.error(`[GameManager] ❌ 방(${roomId})에서 플레이어(${userId}, ${socket.id})를 찾을 수 없습니다.`);
+            socket.emit('notification', { type: 'error', message: '게임의 플레이어가 아닙니다.' });
+            return;
+        }
+    
+        const player1Data = Array.from(room.players.values()).find(p => p.playerId === 'player1');
+        const player2Data = Array.from(room.players.values()).find(p => p.playerId === 'player2');
+    
+        if (!player1Data || !player2Data) {
+            console.error(`[GameManager] ❌ 플레이어 데이터를 찾을 수 없어 상태 전송에 실패했습니다.`);
+            return;
+        }
+    
+        const myData = playerData.playerId === 'player1' ? player1Data : player2Data;
+        const opponentData = playerData.playerId === 'player1' ? player2Data : player1Data;
+    
+        const gameStartData = {
+            playerId: myData.playerId,
+            roomId: room.id,
+            gameState: room.gameState,
+            playerInfo: {
+                me: { id: myData.playerId, username: myData.username },
+                opponent: { id: opponentData.playerId, username: opponentData.username }
+            }
+        };
+    
+        console.log(`[GameManager] 📤 플레이어(${userId})에게 초기 게임 상태를 다시 전송합니다.`);
+        socket.emit('gameStarted', gameStartData);
     }
 }
