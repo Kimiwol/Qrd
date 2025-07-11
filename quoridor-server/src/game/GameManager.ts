@@ -404,8 +404,8 @@ export class GameManager {
         console.log(`📤 Player2 (${player2Socket.id})에게 'gameStarted' 전송`);
         player2Socket.emit('gameStarted', gameStartData2);
         
-        // 게임 상태 전송
-        this.io.to(roomId).emit('gameState', gameState);
+        // 게임 상태는 gameStarted 이벤트에 포함되어 있으므로 중복 전송 제거
+        // this.io.to(roomId).emit('gameState', gameState);
 
         console.log(`🎯 게임 초기 턴 정보: currentTurn: ${gameState.currentTurn}`);
 

@@ -346,12 +346,22 @@ const PlayerTimer = styled.div<{ isTimeRunningOut: boolean; isActive: boolean }>
 
 function Game() {
   const { socket } = useSocket();
-  const [gameState, setGameState] = useState<GameState>({
-    players: [],
-    walls: [],
-    currentTurn: ''
-  });
-  const [playerId, setPlayerId] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Initialize state directly from location.state to prevent initial render with empty data
+  const initialState = location.state as GameStartData | null;
+
+  const [gameState, setGameState] = useState<GameState>(
+    initialState?.gameState ?? { players: [], walls: [], currentTurn: '' }
+  );
+  const [playerId, setPlayerId] = useState<string | null>(
+    initialState?.playerId ?? null
+  );
+  const [playerInfo, setPlayerInfo] = useState<{ me: PlayerInfo; opponent: PlayerInfo; } | null>(
+    initialState?.playerInfo ?? null
+  );
+
   const [winner, setWinner] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(false);
   const [pauseMessage, setPauseMessage] = useState('');
@@ -359,26 +369,15 @@ function Game() {
   const [showTimeoutNotification, setShowTimeoutNotification] = useState(false);
   const [showContinueDialog, setShowContinueDialog] = useState(false);
   const [showQuitDialog, setShowQuitDialog] = useState(false);
-  const [playerInfo, setPlayerInfo] = useState<{
-    me: PlayerInfo;
-    opponent: PlayerInfo;
-  } | null>(null);
-  const navigate = useNavigate();
-  const location = useLocation();
 
-  // 라우터 state에서 초기 데이터 가져오기
+  // Redirect to menu if the game page is loaded without necessary state
   useEffect(() => {
-    const state = location.state as any;
-    if (state) {
-      if (state.playerId) {
-        setPlayerId(state.playerId);
-      }
-      
-      if (state.gameState) {
-        setGameState(state.gameState);
-      }
+    if (!initialState) {
+      console.error("Game.tsx: No initial state found. Redirecting to menu.");
+      navigate('/menu', { replace: true });
     }
-  }, [location.state]);
+  }, [initialState, navigate]);
+
 
   const resetTimer = useCallback(() => {
     setTimeLeft(60);
@@ -425,32 +424,26 @@ function Game() {
         }
       });
 
+      // This event might be redundant if state is passed correctly via navigation
       socket.on('playerAssigned', (assignedPlayerId: string | null) => {
-        setPlayerId(assignedPlayerId);
+        if (!playerId) setPlayerId(assignedPlayerId);
       });
 
+      // This listener is crucial for the *other* player who didn't initiate the navigation
+      // But since both players are navigated from MainMenu, this might just be for safety.
       socket.on('gameStarted', (data: GameStartData) => {
-        console.log('🎮 게임 시작 데이터 상세:', {
-          전체데이터: data,
-          playerId: data.playerId,
-          playerInfo: data.playerInfo,
-          me정보: data.playerInfo?.me,
-          opponent정보: data.playerInfo?.opponent,
-          gameState: data.gameState
-        });
-        console.log('🎯 초기 턴 정보:', {
-          currentTurn: data.gameState.currentTurn,
-          myPlayerId: data.playerId,
-          isMyTurn: data.gameState.currentTurn === data.playerId
-        });
-        setPlayerId(data.playerId);
-        setGameState(data.gameState);
-        setPlayerInfo(data.playerInfo);
-        console.log('플레이어 정보 설정 완료:', {
-          설정된PlayerId: data.playerId,
-          설정된PlayerInfo: data.playerInfo
-        });
-        resetTimer();
+        console.log('🎮 게임 시작 데이터 상세 (from socket event):', data);
+        // Only update if the state is not already set or for a different room
+        if (!playerId || !playerInfo) {
+            setPlayerId(data.playerId);
+            setGameState(data.gameState);
+            setPlayerInfo(data.playerInfo);
+            console.log('플레이어 정보 설정 완료 (from socket event):', {
+              설정된PlayerId: data.playerId,
+              설정된PlayerInfo: data.playerInfo
+            });
+            resetTimer();
+        }
       });
 
       socket.on('gameState', (newGameState: GameState) => {

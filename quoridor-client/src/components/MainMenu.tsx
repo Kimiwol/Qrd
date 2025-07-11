@@ -142,7 +142,7 @@ const MainMenu: React.FC = () => {
         setMessage('');
       };
 
-      const handleGameStarted = (data: {playerId: string, roomId: string, gameState?: any}) => {
+      const handleGameStarted = (data: {playerId: string, roomId: string, gameState?: any, playerInfo?: any}) => {
         console.log('🎮 게임 시작 이벤트 받음:', data);
         
         // 매칭 상태 즉시 해제
@@ -154,6 +154,7 @@ const MainMenu: React.FC = () => {
           playerId: data.playerId,
           roomId: data.roomId,
           hasGameState: !!data.gameState,
+          hasPlayerInfo: !!data.playerInfo,
           userAgent: navigator.userAgent
         });
         
@@ -163,7 +164,8 @@ const MainMenu: React.FC = () => {
             state: { 
               playerId: data.playerId, 
               roomId: data.roomId,
-              gameState: data.gameState 
+              gameState: data.gameState,
+              playerInfo: data.playerInfo
             },
             replace: true  // replace 옵션 추가
           });
