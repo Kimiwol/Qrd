@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import styled from 'styled-components';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Board from './Board';
-import { GameState, Position, PlayerInfo, GameStartData } from '../types';
+import { GameState, Position, PlayerInfo, GameStartData, Wall } from '../types';
 import { useSocket } from '../contexts/SocketContext';
 
 const GameContainer = styled.div`
@@ -511,7 +511,7 @@ function Game() {
     }
   };
 
-  const handleWallPlacement = (wall: { position: Position, isHorizontal: boolean }) => {
+  const handleWallPlacement = (wall: Wall) => {
     if (socket && gameState.currentTurn === playerId && !winner && !isPaused) {
       let serverWall = wall;
       // Player2인 경우, 서버의 절대 좌표계(player1 기준)로 변환
@@ -519,8 +519,8 @@ function Game() {
         serverWall = {
           ...wall,
           position: {
-            x: wall.isHorizontal ? 7 - wall.position.x : 8 - wall.position.x,
-            y: wall.isHorizontal ? 8 - wall.position.y : 7 - wall.position.y,
+            x: wall.orientation === 'horizontal' ? 7 - wall.position.x : 8 - wall.position.x,
+            y: wall.orientation === 'horizontal' ? 8 - wall.position.y : 7 - wall.position.y,
           },
         };
         console.log(`[Game.tsx] P2 좌표 변환 (Wall):`, { from: wall, to: serverWall });
@@ -566,8 +566,8 @@ function Game() {
         walls: gameState.walls.map(wall => ({
           ...wall,
           position: {
-            x: wall.isHorizontal ? 7 - wall.position.x : 8 - wall.position.x,
-            y: wall.isHorizontal ? 8 - wall.position.y : 7 - wall.position.y
+            x: wall.orientation === 'horizontal' ? 7 - wall.position.x : 8 - wall.position.x,
+            y: wall.orientation === 'horizontal' ? 8 - wall.position.y : 7 - wall.position.y
           }
         }))
       };
