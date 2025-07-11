@@ -1,4 +1,5 @@
-import { Rank, RatingCalculation } from '../types';
+import { User } from '../models/User';
+import { GameResult, Rank, RatingCalculation } from '../types';
 
 export class RatingSystem {
     // K-factor (레이팅 변화율)
@@ -84,6 +85,66 @@ export class RatingSystem {
      */
     static getRankThresholds(rank: Rank): { min: number; max: number } {
         return this.RANK_THRESHOLDS[rank];
+    }
+
+    /**
+     * 게임 결과에 따라 사용자들의 레이팅을 업데이트합니다.
+     * @param gameResult 게임 결과
+     */
+    static async updateRatings(gameResult: GameResult): Promise<void> {
+        if (gameResult.draw || !gameResult.winner || !gameResult.loser) {
+            console.log('[RatingSystem] 무승부 또는 플레이어 정보 부족으로 레이팅을 업데이트하지 않습니다.');
+            return;
+        }
+
+        const winner = await User.findById(gameResult.winner);
+        const loser = await User.findById(gameResult.loser);
+
+        if (!winner || !loser) {
+            console.error('[RatingSystem] ❌ 승자 또는 패자 유저를 DB에서 찾을 수 없습니다.');
+            return;
+        }
+
+        const winnerRating = winner.rating;
+        const loserRating = loser.rating;
+
+        // ELO 레이팅 계산
+        const expectedWinner = this.getExpectedScore(winnerRating, loserRating);
+        const expectedLoser = this.getExpectedScore(loserRating, winnerRating);
+
+        const newWinnerRating = Math.round(winnerRating + this.K_FACTOR * (1 - expectedWinner));
+        const newLoserRating = Math.round(loserRating + this.K_FACTOR * (0 - expectedLoser));
+
+        // DB 업데이트
+        winner.rating = Math.max(newWinnerRating, 0);
+        winner.gamesWon += 1;
+        winner.gamesPlayed += 1;
+
+        loser.rating = Math.max(newLoserRating, 0);
+        loser.gamesPlayed += 1;
+
+        await winner.save();
+        await loser.save();
+
+        console.log(`[RatingSystem] 📈 레이팅 업데이트: ${winner.username} (${winnerRating} -> ${winner.rating}), ${loser.username} (${loserRating} -> ${loser.rating})`);
+    }
+
+    /**
+     * 리더보드 정보를 가져옵니다.
+     * @returns 상위 100명의 사용자 정보
+     */
+    static async getLeaderboard(): Promise<any[]> {
+        try {
+            const topUsers = await User.find({})
+                .sort({ rating: -1 })
+                .limit(100)
+                .select('username rating gamesWon gamesPlayed'); // 필요한 필드만 선택
+
+            return topUsers;
+        } catch (error) {
+            console.error('[RatingSystem] ❌ 리더보드 조회 실패:', error);
+            return [];
+        }
     }
 
     /**

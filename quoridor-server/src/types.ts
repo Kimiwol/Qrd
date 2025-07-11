@@ -1,12 +1,13 @@
+import { Socket } from 'socket.io';
+
 export interface Position {
-    x: number;
-    y: number;
+    row: number;
+    col: number;
 }
 
-export interface Player {
-    id: string;
+export interface PlayerState {
     position: Position;
-    wallsLeft: number;
+    walls: number;
 }
 
 export interface Wall {
@@ -15,9 +16,15 @@ export interface Wall {
 }
 
 export interface GameState {
-    players: Player[];
+    player1: PlayerState;
+    player2: PlayerState;
     walls: Wall[];
-    currentTurn: string;
+    currentTurn: 'player1' | 'player2';
+    gameOver: {
+        isOver: boolean;
+        winner?: 'player1' | 'player2';
+        reason?: string;
+    };
 }
 
 // 게임 모드 타입
@@ -58,9 +65,10 @@ export interface RoomInfo {
 
 // 매칭 요청
 export interface MatchmakingRequest {
+    socket: Socket;
     userId: string;
     rating: number;
-    gameMode: GameMode;
+    mode: GameMode;
     timestamp?: number; // 큐에 추가된 시간
 }
 
@@ -85,14 +93,9 @@ export interface RatingCalculation {
 
 // 게임 결과
 export interface GameResult {
-    winner: string;
-    loser: string;
-    mode: GameMode;
-    duration: number;
-    ratingChange?: {
-        winner: RatingCalculation;
-        loser: RatingCalculation;
-    };
+    winner: string | null;
+    loser: string | null;
+    draw: boolean;
 }
 
 // 리더보드 엔트리
