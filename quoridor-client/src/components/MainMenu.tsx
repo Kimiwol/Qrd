@@ -440,12 +440,12 @@ const MainMenu: React.FC = () => {
                   <span>{userProfile.gamesPlayed}</span>
                 </div>
                 <div className="stat">
-                  <label>승리</label>
-                  <span className="wins">{userProfile.gamesWon}</span>
-                </div>
-                <div className="stat">
-                  <label>패배</label>
-                  <span className="losses">{userProfile.gamesPlayed - userProfile.gamesWon}</span>
+                  <label>승 / 패</label>
+                  <div className="win-loss-container">
+                    <span className="wins">{userProfile.gamesWon}</span>
+                    <span className="separator">/</span>
+                    <span className="losses">{userProfile.gamesPlayed - userProfile.gamesWon}</span>
+                  </div>
                 </div>
                 <div className="stat">
                   <label>승률</label>

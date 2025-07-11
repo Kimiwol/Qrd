@@ -7,11 +7,12 @@ export interface Player {
     id: string;
     position: Position;
     wallsLeft: number;
+    validMoves: Position[];
 }
 
 export interface Wall {
     position: Position;
-    isHorizontal: boolean;
+    orientation: 'horizontal' | 'vertical';
 }
 
 export interface GameState {

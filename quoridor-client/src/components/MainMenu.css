@@ -161,6 +161,21 @@
   font-size: 2rem;
 }
 
+.profile-stats .stat .losses {
+  color: #f44336;
+}
+
+.win-loss-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.win-loss-container .separator {
+  color: #ccc;
+  font-weight: bold;
+}
+
 /* 랭크 게임 섹션 */
 .ranked-section h2 {
   color: white;
