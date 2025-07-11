@@ -1,0 +1,11 @@
+{
+  "name": "quoridor-monorepo",
+  "private": true,
+  "scripts": {
+    "client": "pnpm --filter quoridor-client",
+    "server": "pnpm --filter quoridor-server"
+  },
+  "devDependencies": {
+    "typescript": "^5.1.6"
+  }
+}
