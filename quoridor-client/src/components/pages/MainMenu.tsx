@@ -137,11 +137,21 @@ const MainMenu: React.FC = () => {
         setMessage(`매칭 대기 중... (${data.queueSize}명 대기중)`);
       };
 
-      const handleQueueLeft = () => {
-        console.log('❌ 큐 떠남');
+      const handleQueueLeft = (data?: { success: boolean; message: string }) => {
+        console.log('❌ 큐 떠남', data);
         setIsMatchmaking(false);
         setMatchmakingType(null);
+        setMatchmakingStatus('searching');
         setMessage('');
+        
+        // 서버에서 메시지가 있으면 표시
+        if (data?.message) {
+          setNotification({
+            type: 'info',
+            message: data.message
+          });
+          setTimeout(() => setNotification(null), 3000);
+        }
       };
 
       const handleMatchFound = (data: { opponent: string }) => {
@@ -339,10 +349,30 @@ const MainMenu: React.FC = () => {
   };
 
   const cancelMatchmaking = () => {
-    console.log('매칭 취소 시도:', { isMatchmaking });
+    console.log('매칭 취소 시도:', { isMatchmaking, matchmakingType });
     if (socket && isMatchmaking) {
       console.log('leaveQueue 이벤트 전송');
       socket.emit('leaveQueue');
+      
+      // 즉시 로컬 상태 업데이트 (서버 응답을 기다리지 않음)
+      setIsMatchmaking(false);
+      setMatchmakingType(null);
+      setMatchmakingStatus('searching');
+      setMessage('');
+      
+      // 성공 메시지 표시
+      setNotification({
+        type: 'info',
+        message: '매칭이 취소되었습니다.'
+      });
+      
+      // 3초 후 알림 제거
+      setTimeout(() => setNotification(null), 3000);
+    } else {
+      console.log('매칭 취소 실패:', { 
+        noSocket: !socket, 
+        notMatchmaking: !isMatchmaking 
+      });
     }
   };
 
@@ -390,8 +420,9 @@ const MainMenu: React.FC = () => {
               className="cancel-btn"
               style={{touchAction: 'manipulation'}}
               disabled={matchmakingStatus !== 'searching'}
+              title={matchmakingStatus !== 'searching' ? '취소할 수 없습니다' : '매칭을 취소합니다'}
             >
-              매칭 취소
+              {matchmakingStatus === 'searching' ? '매칭 취소' : '취소 불가'}
             </button>
           </div>
         </div>

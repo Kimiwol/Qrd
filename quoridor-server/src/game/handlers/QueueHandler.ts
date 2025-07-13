@@ -37,17 +37,26 @@ export class QueueHandler {
   }
 
   handleLeaveQueue(socket: Socket) {
-    this.matchmakingSystem.removePlayer(socket.id);
+    console.log(`[QueueHandler] 큐 떠나기 요청: ${(socket as any).userId}`);
+    
+    // 매칭 시스템에서 제거
+    const wasInMatchmakingQueue = this.matchmakingSystem.removePlayer(socket.id);
     
     // 간단 매칭 큐에서도 제거
     const simpleQueueIndex = this.simpleQueue.findIndex(s => s.id === socket.id);
-    if (simpleQueueIndex > -1) {
+    const wasInSimpleQueue = simpleQueueIndex > -1;
+    if (wasInSimpleQueue) {
       this.simpleQueue.splice(simpleQueueIndex, 1);
       console.log(`[QueueHandler] 간단 매칭 큐에서 제거: ${socket.id}`);
     }
     
-    socket.emit('queueLeft');
-    console.log(`[QueueHandler] 큐에서 나감: ${(socket as any).userId}`);
+    // 성공적으로 제거되었음을 클라이언트에 알림
+    socket.emit('queueLeft', { 
+      success: true, 
+      message: '매칭이 취소되었습니다.' 
+    });
+    
+    console.log(`[QueueHandler] 큐에서 나감 완료: ${(socket as any).userId}, 매칭큐: ${wasInMatchmakingQueue}, 간단큐: ${wasInSimpleQueue}`);
   }
 
   handleAddTestBot(socket: Socket) {

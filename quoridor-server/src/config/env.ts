@@ -10,6 +10,8 @@ const config = {
   allowedOrigins: [
     "https://qrdonline.netlify.app",
     "https://quoridor-online.netlify.app",
+    "https://main--qrdonline.netlify.app", // 메인 브랜치 미리보기
+    "https://deploy-preview-*.netlify.app", // 배포 미리보기
   ]
 };
 

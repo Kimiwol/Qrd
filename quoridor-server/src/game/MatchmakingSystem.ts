@@ -48,8 +48,9 @@ export class MatchmakingSystem {
     /**
      * 모든 큐에서 플레이어 제거
      * @param socketId 소켓 ID
+     * @returns 제거되었는지 여부
      */
-    removePlayer(socketId: string): void {
+    removePlayer(socketId: string): boolean {
         let removed = false;
         for (const mode in this.queue) {
             const gameMode = mode as GameMode;
@@ -60,6 +61,7 @@ export class MatchmakingSystem {
                 console.log(`[Matchmaking] 큐에서 제거: ${socketId} (${gameMode})`);
             }
         }
+        return removed;
     }
 
     /**
