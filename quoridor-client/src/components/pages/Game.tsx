@@ -591,18 +591,22 @@ function Game() {
   const getGameState = (): GameState | null => {
     if (!gameState) return null;
 
+    // players, walls가 undefined일 경우 빈 배열로 대체
+    const safePlayers = gameState.players ?? [];
+    const safeWalls = gameState.walls ?? [];
+
     if (playerId === 'player2') {
       // Player2인 경우 보드를 180도 회전하여 표시
       const transformedState = {
         ...gameState,
-        players: gameState.players.map(player => ({
+        players: safePlayers.map(player => ({
           ...player,
           position: {
             x: 8 - player.position.x,
             y: 8 - player.position.y
           }
         })),
-        walls: gameState.walls.map(wall => ({
+        walls: safeWalls.map(wall => ({
           ...wall,
           position: {
             x: wall.orientation === 'horizontal' ? 7 - wall.position.x : 8 - wall.position.x,
@@ -612,7 +616,8 @@ function Game() {
       };
       return transformedState;
     }
-    return gameState;
+    // player1일 때도 안전하게 반환
+    return { ...gameState, players: safePlayers, walls: safeWalls };
   };
 
   const renderPlayerCard = (player: Player, position: 'top' | 'bottom') => {
