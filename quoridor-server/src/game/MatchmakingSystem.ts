@@ -21,6 +21,14 @@ export class MatchmakingSystem {
      * @param request 매칭 요청
      */
     addPlayer(request: MatchmakingRequest): void {
+        console.log(`➕ [Matchmaking] addPlayer 시작:`, {
+            userId: request.userId,
+            socketId: request.socket.id,
+            mode: request.mode,
+            rating: request.rating,
+            socketConnected: request.socket.connected
+        });
+        
         // 이미 다른 큐에 있는지 확인하고 제거
         this.removePlayer(request.socket.id);
 
@@ -35,14 +43,20 @@ export class MatchmakingSystem {
         if (existingIndex !== -1) {
             // 이미 있다면 업데이트 (필요 시)
             queue[existingIndex] = { ...request, timestamp: Date.now() };
-            console.log(`[Matchmaking] 큐 업데이트: ${request.userId} (${gameMode})`);
+            console.log(`🔄 [Matchmaking] 큐 업데이트: ${request.userId} (${gameMode}) - 현재 큐 크기: ${queue.length}`);
         } else {
             // 새로 추가
             queue.push({ ...request, timestamp: Date.now() });
-            console.log(`[Matchmaking] 큐 추가: ${request.userId} (${gameMode}) - 현재 큐 크기: ${queue.length}`);
-            // request.socket.emit('notification', { type: 'info', message: `${gameMode === GameMode.RANKED ? '랭크' : '일반'} 게임 대기열에 참가했습니다.` });
+            console.log(`✅ [Matchmaking] 큐 추가: ${request.userId} (${gameMode}) - 현재 큐 크기: ${queue.length}`);
+            
+            // 큐 상태 전송
             request.socket.emit('queueJoined', { mode: gameMode, queueSize: queue.length });
         }
+        
+        console.log(`📊 [Matchmaking] 현재 큐 상태:`, {
+            ranked: this.queue[GameMode.RANKED].length,
+            custom: this.queue[GameMode.CUSTOM].length
+        });
     }
 
     /**
@@ -72,11 +86,18 @@ export class MatchmakingSystem {
     findMatch(gameMode: GameMode): { player1: MatchmakingRequest; player2: MatchmakingRequest } | null {
         const queue = this.queue[gameMode];
         
+        console.log(`🔍 [Matchmaking] findMatch 호출:`, {
+            gameMode,
+            queueLength: queue.length,
+            players: queue.map(p => ({ userId: p.userId, socketConnected: p.socket.connected }))
+        });
+        
         if (queue.length < 2) {
+            console.log(`❌ [Matchmaking] 매칭 불가: 플레이어 부족 (${queue.length}/2)`);
             return null;
         }
 
-        console.log(`매칭 시도: ${gameMode} 모드, 큐 크기: ${queue.length}`);
+        console.log(`🎯 [Matchmaking] 매칭 시도: ${gameMode} 모드, 큐 크기: ${queue.length}`);
 
         // 랭크 모드의 경우 레이팅 기반 매칭
         if (gameMode === GameMode.RANKED) {
@@ -85,14 +106,28 @@ export class MatchmakingSystem {
 
         // 커스텀 모드의 경우 선착순 매칭
         if (gameMode === GameMode.CUSTOM) {
+            // 연결이 끊어진 플레이어 제거
+            const connectedPlayers = queue.filter(p => p.socket.connected);
+            if (connectedPlayers.length < 2) {
+                console.log(`❌ [Matchmaking] 연결된 플레이어 부족: ${connectedPlayers.length}/2`);
+                // 연결이 끊어진 플레이어들을 큐에서 제거
+                this.queue[gameMode] = connectedPlayers;
+                return null;
+            }
+            
             // 단순히 큐의 맨 앞 두 명을 매칭
             const player1 = queue.shift()!;
             const player2 = queue.shift()!;
             
-            console.log(`[Matchmaking] 커스텀 매칭 성공: ${player1.userId} vs ${player2.userId}`);
+            console.log(`✅ [Matchmaking] 커스텀 매칭 성공:`, {
+                player1: { userId: player1.userId, socketId: player1.socket.id },
+                player2: { userId: player2.userId, socketId: player2.socket.id }
+            });
+            
             return { player1, player2 };
         }
 
+        console.log(`❌ [Matchmaking] 지원하지 않는 게임 모드: ${gameMode}`);
         return null;
     }
 
@@ -130,5 +165,23 @@ export class MatchmakingSystem {
         }
 
         return null;
+    }
+
+    /**
+     * 큐 정보 조회 (디버깅용)
+     */
+    getQueueInfo(mode: GameMode) {
+        const queue = this.queue[mode];
+        return {
+            mode,
+            size: queue.length,
+            players: queue.map(req => ({
+                userId: req.userId,
+                socketId: req.socket.id,
+                rating: req.rating,
+                waitTime: req.timestamp ? Date.now() - req.timestamp : 0,
+                socketConnected: req.socket.connected
+            }))
+        };
     }
 }

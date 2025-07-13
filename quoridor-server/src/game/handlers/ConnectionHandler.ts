@@ -55,6 +55,7 @@ export class ConnectionHandler {
     handleAddTestBot: (socket: Socket) => void;
     handleCreateBotGame: (socket: Socket) => void;
     handleRequestInitialGameState: (socket: Socket, data: { roomId: string }) => void;
+    handleDebugMatchmaking: (socket: Socket) => void;
     handlePlayerDisconnect: (socket: Socket) => void;
   }) {
     const userId = (socket as any).userId;
@@ -84,6 +85,7 @@ export class ConnectionHandler {
     });
     
     socket.on('requestInitialGameState', (data) => handlers.handleRequestInitialGameState(socket, data));
+    socket.on('debugMatchmaking', () => handlers.handleDebugMatchmaking(socket));
     
     socket.on('disconnect', () => handlers.handlePlayerDisconnect(socket));
 

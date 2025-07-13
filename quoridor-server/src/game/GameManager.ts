@@ -82,6 +82,7 @@ export class GameManager {
             handleAddTestBot: this.queueHandler.handleAddTestBot.bind(this.queueHandler),
             handleCreateBotGame: this.handleCreateBotGame.bind(this),
             handleRequestInitialGameState: this.handleRequestInitialGameState.bind(this),
+            handleDebugMatchmaking: this.handleDebugMatchmaking.bind(this),
             handlePlayerDisconnect: (socket: Socket) => this.disconnectHandler.handlePlayerDisconnect(
                 socket,
                 this.findPlayerRoom.bind(this),
@@ -95,16 +96,17 @@ export class GameManager {
     }
 
     private tryMatchmaking(mode: GameMode) {
-        console.log(`[GameManager] ${mode} 게임 매칭 시도...`);
+        console.log(`🔍 [GameManager] ${mode} 게임 매칭 시도...`);
         const match = this.matchmakingSystem.findMatch(mode);
         if (match) {
-            console.log(`매칭 성공!`, {
-                player1: match.player1.userId,
-                player2: match.player2.userId
+            console.log(`✅ [GameManager] 매칭 성공!`, {
+                player1: { userId: match.player1.userId, socketId: match.player1.socket.id },
+                player2: { userId: match.player2.userId, socketId: match.player2.socket.id },
+                mode
             });
             this.confirmAndCreateGame(match.player1.socket, match.player2.socket, mode);
         } else {
-            console.log('매칭할 상대를 찾지 못했습니다.');
+            console.log(`❌ [GameManager] 매칭할 상대를 찾지 못했습니다. (${mode})`);
         }
     }
 
@@ -222,6 +224,36 @@ export class GameManager {
 
         console.log(`✅ 초기 게임 상태 전송:`, gameStartData);
         socket.emit('gameStarted', gameStartData);
+    }
+
+    private handleDebugMatchmaking(socket: Socket) {
+        const userId = (socket as any).userId;
+        const rating = (socket as any).rating;
+        const username = (socket as any).username;
+        
+        console.log(`🐛 [Debug] 매칭 디버그 정보:`, {
+            userId,
+            username,
+            rating,
+            socketId: socket.id,
+            socketConnected: socket.connected
+        });
+        
+        // 현재 큐 상태 확인
+        const rankedQueue = this.matchmakingSystem.getQueueInfo(GameMode.RANKED);
+        const customQueue = this.matchmakingSystem.getQueueInfo(GameMode.CUSTOM);
+        
+        const debugInfo = {
+            player: { userId, username, rating, socketId: socket.id },
+            queues: {
+                ranked: rankedQueue,
+                custom: customQueue
+            },
+            totalRooms: this.rooms.size
+        };
+        
+        console.log(`🐛 [Debug] 전체 상태:`, debugInfo);
+        socket.emit('debugInfo', debugInfo);
     }
 
     private findPlayerRoom(socketId: string): Room | undefined {
