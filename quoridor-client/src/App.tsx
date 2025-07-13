@@ -1,18 +1,11 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Login from './components/Login';
-import Register from './components/Register';
-import MainMenu from './components/MainMenu';
-import Game from './components/Game';
+import Login from './components/auth/Login';
+import Register from './components/auth/Register';
+import MainMenu from './components/pages/MainMenu';
+import Game from './components/pages/Game';
 import { SocketProvider } from './contexts/SocketContext';
-
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const token = localStorage.getItem('token');
-  if (!token) {
-    return <Navigate to="/login" replace />;
-  }
-  return <>{children}</>;
-};
+import ProtectedRoute from './routes/ProtectedRoute';
 
 function App() {
   // 앱 시작 시 환경 변수 확인
@@ -45,7 +38,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/" element={<Navigate to="/menu" replace />} />
+          <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
       </Router>
     </SocketProvider>

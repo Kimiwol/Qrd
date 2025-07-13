@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import styled from 'styled-components';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
-import Board from './Board';
-import { GameState, Position, PlayerInfo, GameStartData, Wall, Player } from '../types';
-import { useSocket } from '../contexts/SocketContext';
+import Board from '../Board';
+import { GameState, Position, PlayerInfo, GameStartData, Wall, Player } from '../../types';
+import { useSocket } from '../../contexts/SocketContext';
 
 const GameContainer = styled.div`
   display: flex;

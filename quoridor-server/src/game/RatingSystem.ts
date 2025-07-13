@@ -1,5 +1,5 @@
 import { User } from '../models/User';
-import { GameResult, Rank, RatingCalculation } from '../types';
+import { GameResult, Rank, RatingCalculation, GameMode } from '../types';
 
 export class RatingSystem {
     // K-factor (레이팅 변화율)
@@ -89,16 +89,18 @@ export class RatingSystem {
 
     /**
      * 게임 결과에 따라 사용자들의 레이팅을 업데이트합니다.
-     * @param gameResult 게임 결과
+     * @param winnerId 승자 사용자 ID
+     * @param loserId 패자 사용자 ID  
+     * @param gameMode 게임 모드
      */
-    static async updateRatings(gameResult: GameResult): Promise<void> {
-        if (gameResult.draw || !gameResult.winner || !gameResult.loser) {
-            console.log('[RatingSystem] 무승부 또는 플레이어 정보 부족으로 레이팅을 업데이트하지 않습니다.');
+    static async updateRatings(winnerId: string, loserId: string, gameMode: GameMode): Promise<void> {
+        if (!winnerId || !loserId) {
+            console.log('[RatingSystem] 승자 또는 패자 정보 부족으로 레이팅을 업데이트하지 않습니다.');
             return;
         }
 
-        const winner = await User.findById(gameResult.winner);
-        const loser = await User.findById(gameResult.loser);
+        const winner = await User.findById(winnerId);
+        const loser = await User.findById(loserId);
 
         if (!winner || !loser) {
             console.error('[RatingSystem] ❌ 승자 또는 패자 유저를 DB에서 찾을 수 없습니다.');

@@ -93,9 +93,9 @@ export interface RatingCalculation {
 
 // 게임 결과
 export interface GameResult {
-    winner: string | null;
-    loser: string | null;
-    draw: boolean;
+    winner: 'player1' | 'player2';
+    duration: number;
+    mode: GameMode;
 }
 
 // 리더보드 엔트리

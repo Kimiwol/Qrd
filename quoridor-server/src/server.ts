@@ -2,8 +2,10 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
-import mongoose from 'mongoose';
-import dotenv from 'dotenv';
+import config from './config/env';
+import { connectDB } from './config/database';
+import { requestLogger } from './middleware/logger';
+import { setupProcessHandlers } from './utils/processHandlers';
 
 // 라우트 import
 import authRoutes from './routes/auth';
@@ -12,41 +14,15 @@ import gameRoutes from './routes/game';
 // 게임 매니저 import
 import { GameManager } from './game/GameManager';
 
-dotenv.config();
-
 const app = express();
 const httpServer = createServer(app);
 
-// CORS 설정
-const allowedOrigins = [
-    "https://qrdonline.netlify.app",
-    "https://quoridor-online.netlify.app",  // 다른 가능한 URL
-    ...(process.env.NODE_ENV === 'development' ? ["http://localhost:3000"] : [])
-];
-
-if (process.env.CLIENT_URL && !allowedOrigins.includes(process.env.CLIENT_URL)) {
-    allowedOrigins.push(process.env.CLIENT_URL);
-}
-
-console.log('Allowed CORS origins:', allowedOrigins);
+console.log('Allowed CORS origins:', config.allowedOrigins);
 
 const io = new Server(httpServer, {
     cors: {
         origin: (origin, callback) => {
-            // 개발 환경에서는 모든 origin 허용
-            if (process.env.NODE_ENV === 'development') {
-                callback(null, true);
-                return;
-            }
-            
-            // origin이 없는 경우 (모바일 앱 등) 허용
-            if (!origin) {
-                callback(null, true);
-                return;
-            }
-            
-            // Netlify 도메인 패턴 확인
-            if (origin.includes('netlify.app') || allowedOrigins.includes(origin)) {
+            if (config.nodeEnv === 'development' || !origin || config.allowedOrigins.includes(origin) || origin.includes('netlify.app')) {
                 callback(null, true);
             } else {
                 console.log('Blocked origin:', origin);
@@ -62,20 +38,7 @@ const io = new Server(httpServer, {
 
 app.use(cors({
     origin: (origin, callback) => {
-        // 개발 환경에서는 모든 origin 허용
-        if (process.env.NODE_ENV === 'development') {
-            callback(null, true);
-            return;
-        }
-        
-        // origin이 없는 경우 (모바일 앱 등) 허용
-        if (!origin) {
-            callback(null, true);
-            return;
-        }
-        
-        // Netlify 도메인 패턴 확인
-        if (origin.includes('netlify.app') || allowedOrigins.includes(origin)) {
+        if (config.nodeEnv === 'development' || !origin || config.allowedOrigins.includes(origin) || origin.includes('netlify.app')) {
             callback(null, true);
         } else {
             console.log('Blocked origin:', origin);
@@ -89,27 +52,10 @@ app.use(cors({
 app.use(express.json());
 
 // 요청 로깅 미들웨어
-app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} ${req.method} ${req.path}`, {
-        origin: req.get('Origin'),
-        userAgent: req.get('User-Agent'),
-        body: req.method === 'POST' ? { ...req.body, password: req.body.password ? '***' : undefined } : undefined
-    });
-    next();
-});
+app.use(requestLogger);
 
 // MongoDB 연결
-if (process.env.MONGODB_URI) {
-    mongoose.connect(process.env.MONGODB_URI)
-        .then(() => {
-            console.log('✅ MongoDB 연결 성공!');
-        })
-        .catch(err => {
-            console.log('🎮 인증 기능 없이 게임만 진행 가능합니다.');
-        });
-} else {
-    console.log('MongoDB URI가 설정되지 않았습니다. 인증 기능 없이 게임만 진행 가능합니다.');
-}
+connectDB();
 
 // 루트 경로 핸들러
 app.get('/', (req, res) => {
@@ -133,24 +79,16 @@ app.use('/api', gameRoutes);
 const gameManager = new GameManager(io);
 
 // 서버 시작
-const PORT = process.env.PORT || 4000;
+const PORT = config.port;
 console.log('🔧 환경 변수:');
 console.log('- PORT:', PORT);
-console.log('- NODE_ENV:', process.env.NODE_ENV);
-console.log('- MONGODB_URI:', process.env.MONGODB_URI ? '설정됨' : '미설정');
+console.log('- NODE_ENV:', config.nodeEnv);
+console.log('- MONGODB_URI:', config.mongoURI ? '설정됨' : '미설정');
 
 console.log('🚀 서버 시작 시도...');
 
 // 프로세스 에러 핸들링
-process.on('uncaughtException', (error) => {
-    console.error('❌ Uncaught Exception:', error.message);
-    process.exit(1);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
-    process.exit(1);
-});
+setupProcessHandlers();
 
 httpServer.listen(Number(PORT), () => {
     console.log(`✅ 서버가 포트 ${PORT}에서 성공적으로 시작되었습니다!`);

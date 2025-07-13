@@ -15,6 +15,115 @@ export class GameLogic {
         };
     }
 
+    // 플레이어 이동 처리
+    static makeMove(gameState: GameState, newPosition: Position): GameState {
+        const currentPlayer = gameState.currentTurn;
+        const playerState = gameState[currentPlayer];
+        const opponentState = gameState[currentPlayer === 'player1' ? 'player2' : 'player1'];
+
+        // 이동 유효성 검사
+        if (!this.isValidMoveWithState(gameState, newPosition)) {
+            throw new Error('유효하지 않은 이동입니다.');
+        }
+
+        const newGameState: GameState = {
+            ...gameState,
+            [currentPlayer]: {
+                ...playerState,
+                position: newPosition
+            },
+            currentTurn: currentPlayer === 'player1' ? 'player2' : 'player1'
+        };
+
+        // 승리 조건 확인
+        if (this.checkWinCondition(newPosition, currentPlayer)) {
+            newGameState.gameOver = {
+                isOver: true,
+                winner: currentPlayer,
+                reason: 'goal_reached'
+            };
+        }
+
+        return newGameState;
+    }
+
+    // 벽 설치 처리
+    static placeWall(gameState: GameState, wall: Wall): GameState {
+        const currentPlayer = gameState.currentTurn;
+        const playerState = gameState[currentPlayer];
+
+        if (playerState.walls <= 0) {
+            throw new Error('남은 벽이 없습니다.');
+        }
+
+        if (!this.isValidWallPlacement(wall, gameState.walls, gameState.player1.position, gameState.player2.position)) {
+            throw new Error('유효하지 않은 벽 설치입니다.');
+        }
+
+        const newGameState: GameState = {
+            ...gameState,
+            [currentPlayer]: {
+                ...playerState,
+                walls: playerState.walls - 1
+            },
+            walls: [...gameState.walls, wall],
+            currentTurn: currentPlayer === 'player1' ? 'player2' : 'player1'
+        };
+
+        return newGameState;
+    }
+
+    // 승자 확인
+    static checkWinner(gameState: GameState): 'player1' | 'player2' | null {
+        if (gameState.gameOver.isOver && gameState.gameOver.winner) {
+            return gameState.gameOver.winner;
+        }
+        return null;
+    }
+
+    // 게임 상태를 고려한 이동 유효성 검사
+    static isValidMoveWithState(gameState: GameState, newPosition: Position): boolean {
+        const currentPlayer = gameState.currentTurn;
+        const currentPosition = gameState[currentPlayer].position;
+        const opponentPosition = gameState[currentPlayer === 'player1' ? 'player2' : 'player1'].position;
+
+        // 보드 범위 체크
+        if (newPosition.row < 0 || newPosition.row > 8 || 
+            newPosition.col < 0 || newPosition.col > 8) {
+            return false;
+        }
+
+        // 상대방이 있는 위치로는 이동 불가
+        if (newPosition.row === opponentPosition.row && newPosition.col === opponentPosition.col) {
+            return false;
+        }
+
+        const dr = Math.abs(newPosition.row - currentPosition.row);
+        const dc = Math.abs(newPosition.col - currentPosition.col);
+        
+        // 기본 이동: 한 칸
+        if ((dr === 1 && dc === 0) || (dr === 0 && dc === 1)) {
+            return !this.isBlockedByWall(currentPosition, newPosition, gameState.walls);
+        }
+        
+        // 점프 이동 (상대방 뛰어넘기)
+        if ((dr === 2 && dc === 0) || (dr === 0 && dc === 2)) {
+            // 상대방이 중간에 있는지 확인
+            const middlePosition = {
+                row: (currentPosition.row + newPosition.row) / 2,
+                col: (currentPosition.col + newPosition.col) / 2
+            };
+            
+            if (middlePosition.row === opponentPosition.row && middlePosition.col === opponentPosition.col) {
+                // 중간에 벽이 없고, 목표 위치에도 벽이 없는지 확인
+                return !this.isBlockedByWall(currentPosition, opponentPosition, gameState.walls) &&
+                       !this.isBlockedByWall(opponentPosition, newPosition, gameState.walls);
+            }
+        }
+        
+        return false;
+    }
+
     // 이동이 유효한지 확인
     static isValidMove(currentPosition: Position, newPosition: Position, walls: Wall[]): boolean {
         // 보드 범위 체크
