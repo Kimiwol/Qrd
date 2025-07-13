@@ -54,7 +54,7 @@ export class ConnectionHandler {
     handleGetRating: (socket: Socket, callback: any) => void;
     handleAddTestBot: (socket: Socket) => void;
     handleCreateBotGame: (socket: Socket) => void;
-    handleRequestInitialGameState: (socket: Socket, roomId: string) => void;
+    handleRequestInitialGameState: (socket: Socket, data: { roomId: string }) => void;
     handlePlayerDisconnect: (socket: Socket) => void;
   }) {
     const userId = (socket as any).userId;
@@ -83,7 +83,7 @@ export class ConnectionHandler {
       handlers.handleCreateBotGame(socket);
     });
     
-    socket.on('requestInitialGameState', (roomId) => handlers.handleRequestInitialGameState(socket, roomId));
+    socket.on('requestInitialGameState', (data) => handlers.handleRequestInitialGameState(socket, data));
     
     socket.on('disconnect', () => handlers.handlePlayerDisconnect(socket));
 

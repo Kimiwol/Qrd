@@ -368,11 +368,25 @@ function Game() {
 
   // Redirect to menu if the game page is loaded without necessary state
   useEffect(() => {
-    if (!initialState) {
-      console.error("Game.tsx: No initial state found. Redirecting to menu.");
+    console.log('🔍 Game.tsx 초기화 체크:', {
+      hasInitialState: !!initialState,
+      playerId: initialState?.playerId,
+      roomId: initialState?.roomId,
+      hasGameState: !!initialState?.gameState,
+      hasPlayerInfo: !!initialState?.playerInfo,
+      urlRoomId: roomId
+    });
+    
+    if (!initialState || !initialState.playerId || !initialState.roomId) {
+      console.error("Game.tsx: 필수 게임 데이터가 없습니다. 메뉴로 이동합니다.");
       navigate('/menu', { replace: true });
+      return;
     }
-  }, [initialState, navigate]);
+    
+    // 게임 데이터가 있으면 준비 완료
+    setIsReady(true);
+    console.log('✅ Game.tsx 초기화 완료');
+  }, [initialState, navigate, roomId]);
 
 
   const resetTimer = useCallback(() => {
@@ -442,7 +456,7 @@ function Game() {
         }
       });
 
-      socket.on('gameState', (newGameState: GameState) => {
+      socket.on('gameStateUpdate', (newGameState: GameState) => {
         console.log('🔄 게임 상태 업데이트:', {
           currentTurn: newGameState.currentTurn,
           myPlayerId: playerId,
@@ -451,6 +465,18 @@ function Game() {
         setGameState(newGameState);
         resetTimer();
       });
+
+      socket.on('gameState', (newGameState: GameState) => {
+        console.log('🔄 게임 상태 (gameState 이벤트):', newGameState);
+        setGameState(newGameState);
+        resetTimer();
+      });
+      
+      // 초기 게임 상태가 없는 경우 서버에 요청
+      if (roomId && (!gameState || !playerId)) {
+        console.log('🔄 초기 게임 상태 요청:', roomId);
+        socket.emit('requestInitialGameState', { roomId });
+      }
 
       socket.on('turnTimedOut', (message: string) => {
         console.log('🕐 턴 타임아웃:', message);
@@ -673,14 +699,31 @@ function Game() {
     );
   }
 
+  // 게임 데이터가 준비되지 않았으면 로딩 화면 표시
+  if (!isReady || !gameState || !playerId) {
+    return (
+      <GameContainer>
+        <GameOverlay>
+          <div style={{ textAlign: 'center' }}>
+            <h2>🎮 게임 로딩 중...</h2>
+            <p>게임 데이터를 불러오고 있습니다.</p>
+            <div className="loading-spinner" style={{ margin: '20px auto' }}></div>
+          </div>
+        </GameOverlay>
+      </GameContainer>
+    );
+  }
+
   // 플레이어 정보는 원본 게임 상태에서 가져오고, 화면 표시용 상태는 따로 변환
   const transformedGameState = getGameState();
   if (!transformedGameState) {
       console.error("Render crash: transformedGameState is null even when ready.");
       return (
-        <GameOverlay>
-            오류가 발생했습니다. 메뉴로 돌아갑니다...
-        </GameOverlay>
+        <GameContainer>
+          <GameOverlay>
+              오류가 발생했습니다. 메뉴로 돌아갑니다...
+          </GameOverlay>
+        </GameContainer>
       );
   }
 

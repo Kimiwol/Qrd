@@ -176,13 +176,52 @@ export class GameManager {
         this.gameHandler.createGame(socket, botSocket as Socket, GameMode.CUSTOM);
     }
 
-    private handleRequestInitialGameState(socket: Socket, roomId: string) {
-        const room = this.rooms.get(roomId);
-        if (room) {
-            socket.emit('gameStateUpdate', room.gameState);
-        } else {
+    private handleRequestInitialGameState(socket: Socket, data: { roomId: string }) {
+        console.log(`🔄 초기 게임 상태 요청:`, {
+            socketId: socket.id,
+            userId: (socket as any).userId,
+            roomId: data.roomId
+        });
+        
+        const room = this.rooms.get(data.roomId);
+        if (!room) {
+            console.error(`❌ 방을 찾을 수 없음: ${data.roomId}`);
             socket.emit('error', '방을 찾을 수 없습니다.');
+            return;
         }
+
+        const playerData = room.players.get(socket.id);
+        if (!playerData) {
+            console.error(`❌ 플레이어 데이터를 찾을 수 없음: ${socket.id}`);
+            socket.emit('error', '플레이어 정보를 찾을 수 없습니다.');
+            return;
+        }
+
+        // 플레이어 정보 구성
+        const players = Array.from(room.players.values());
+        const me = playerData;
+        const opponent = players.find(p => p.socket.id !== socket.id);
+
+        const gameStartData = {
+            playerId: me.playerId,
+            roomId: data.roomId,
+            gameState: room.gameState,
+            playerInfo: {
+                me: {
+                    id: me.userId,
+                    username: me.username || `Player${me.playerId === 'player1' ? '1' : '2'}`,
+                    wallsLeft: room.gameState[me.playerId].walls
+                },
+                opponent: {
+                    id: opponent?.userId || 'unknown',
+                    username: opponent?.username || `Player${opponent?.playerId === 'player1' ? '1' : '2'}`,
+                    wallsLeft: room.gameState[opponent?.playerId || 'player1'].walls
+                }
+            }
+        };
+
+        console.log(`✅ 초기 게임 상태 전송:`, gameStartData);
+        socket.emit('gameStarted', gameStartData);
     }
 
     private findPlayerRoom(socketId: string): Room | undefined {

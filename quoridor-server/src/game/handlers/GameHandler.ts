@@ -65,22 +65,50 @@ export class GameHandler {
     this.rooms.set(roomId, room);
 
     // 게임 시작 알림
-    this.io.to(roomId).emit('gameStarted', {
+    console.log(`📤 gameStarted 이벤트 전송 준비`);
+    
+    // 각 플레이어에게 개별적으로 전송 (playerId 포함)
+    const player1Data = room.players.get(player1Socket.id)!;
+    const player2Data = room.players.get(player2Socket.id)!;
+    
+    const gameStartData = {
       roomId,
       gameState,
-      players: {
-        player1: {
-          id: (player1Socket as any).userId,
-          username: (player1Socket as any).username,
-          rating: (player1Socket as any).rating
+      playerInfo: {
+        me: {
+          id: player1Data.userId,
+          username: player1Data.username || 'Player1',
+          wallsLeft: gameState.player1.walls
         },
-        player2: {
-          id: (player2Socket as any).userId,
-          username: (player2Socket as any).username,
-          rating: (player2Socket as any).rating
+        opponent: {
+          id: player2Data.userId,
+          username: player2Data.username || 'Player2', 
+          wallsLeft: gameState.player2.walls
         }
       },
       mode
+    };
+    
+    // Player1에게 전송
+    player1Socket.emit('gameStarted', {
+      ...gameStartData,
+      playerId: 'player1'
+    });
+    
+    // Player2에게 전송
+    player2Socket.emit('gameStarted', {
+      ...gameStartData,
+      playerId: 'player2',
+      playerInfo: {
+        me: gameStartData.playerInfo.opponent,
+        opponent: gameStartData.playerInfo.me
+      }
+    });
+    
+    console.log(`✅ gameStarted 이벤트 전송 완료:`, {
+      player1Id: 'player1',
+      player2Id: 'player2',
+      roomId
     });
 
     // 턴 타이머 시작

@@ -163,8 +163,20 @@ const MainMenu: React.FC = () => {
       const handleGameStarted = (data: {playerId: string, roomId: string, gameState?: any, playerInfo?: any}) => {
         console.log('🎮 게임 시작 이벤트 받음:', data);
         
+        // 필수 데이터 검증
+        if (!data.playerId || !data.roomId) {
+          console.error('❌ 게임 시작 데이터 불완전:', data);
+          setNotification({
+            type: 'error',
+            message: '게임 시작에 실패했습니다. 잠시 후 다시 시도해주세요.'
+          });
+          setIsMatchmaking(false);
+          return;
+        }
+        
         // 매칭 상태 즉시 해제
         setMatchmakingStatus('starting');
+        setMessage('게임에 접속하는 중입니다...');
         
         // 더 구체적인 로깅
         console.log('🚀 게임 화면으로 이동 시도:', {
@@ -176,19 +188,35 @@ const MainMenu: React.FC = () => {
         });
         
         try {
-          // 게임 페이지로 이동
-          navigate(`/game/${data.roomId}`, { 
-            state: { 
-              playerId: data.playerId, 
-              roomId: data.roomId,
-              gameState: data.gameState,
-              playerInfo: data.playerInfo
-            },
-            replace: true  // replace 옵션 추가
-          });
-          console.log('✅ 게임 페이지 이동 완료');
+          // 짧은 지연 후 이동 (UI 업데이트 시간 확보)
+          setTimeout(() => {
+            console.log('📱 실제 게임 페이지 이동 실행');
+            navigate(`/game/${data.roomId}`, { 
+              state: { 
+                playerId: data.playerId, 
+                roomId: data.roomId,
+                gameState: data.gameState,
+                playerInfo: data.playerInfo
+              },
+              replace: true
+            });
+            
+            // 매칭 상태 완전히 정리
+            setIsMatchmaking(false);
+            setMatchmakingType(null);
+            setMatchmakingStatus('searching');
+            setMessage('');
+            
+            console.log('✅ 게임 페이지 이동 완료');
+          }, 500);
+          
         } catch (error) {
           console.error('❌ 게임 페이지 이동 실패:', error);
+          setNotification({
+            type: 'error',
+            message: '게임 화면 이동에 실패했습니다.'
+          });
+          setIsMatchmaking(false);
         }
       };
 
@@ -412,7 +440,8 @@ const MainMenu: React.FC = () => {
             {matchmakingStatus === 'starting' && (
               <>
                 <h3>🚀 게임 시작 중...</h3>
-                <p>게임 화면으로 이동합니다.</p>
+                <p>게임 화면으로 이동합니다...</p>
+                <div className="loading-spinner"></div>
               </>
             )}
             <button 
