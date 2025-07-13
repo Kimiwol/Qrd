@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useSocket } from '../../contexts/SocketContext';
 import axios from 'axios';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
@@ -62,6 +63,7 @@ const Link = styled.span`
 `;
 
 const Login = () => {
+  const { connectSocket } = useSocket();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -103,6 +105,7 @@ const Login = () => {
       console.log('Login successful:', response.data);
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
+      connectSocket();
       navigate('/menu');
     } catch (error: any) {
       console.error('Login error:', error);
