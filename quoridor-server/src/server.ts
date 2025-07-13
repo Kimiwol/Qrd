@@ -21,14 +21,7 @@ console.log('Allowed CORS origins:', config.allowedOrigins);
 
 const io = new Server(httpServer, {
     cors: {
-        origin: (origin, callback) => {
-            if (config.nodeEnv === 'development' || !origin || config.allowedOrigins.includes(origin) || origin.includes('netlify.app')) {
-                callback(null, true);
-            } else {
-                console.log('Blocked origin:', origin);
-                callback(new Error('CORS policy violation'));
-            }
-        },
+        origin: ['https://qrdonline.netlify.app'],
         methods: ["GET", "POST"],
         credentials: true,
         allowedHeaders: ["Content-Type", "Authorization"]
@@ -37,14 +30,7 @@ const io = new Server(httpServer, {
 });
 
 app.use(cors({
-    origin: (origin, callback) => {
-        if (config.nodeEnv === 'development' || !origin || config.allowedOrigins.includes(origin) || origin.includes('netlify.app')) {
-            callback(null, true);
-        } else {
-            console.log('Blocked origin:', origin);
-            callback(new Error('CORS policy violation'));
-        }
-    },
+    origin: ['https://qrdonline.netlify.app'],
     credentials: true,
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type", "Authorization"]
