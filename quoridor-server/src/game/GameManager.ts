@@ -45,8 +45,26 @@ export class GameManager {
         this.io.use(AuthHandler.authenticateSocket);
 
         this.io.on('connection', async (socket) => {
+            console.log(`🔌 새 소켓 연결 시도: ${socket.id}`);
+            console.log(`📍 연결 정보:`, {
+                socketId: socket.id,
+                handshake: {
+                    auth: !!socket.handshake.auth,
+                    headers: {
+                        origin: socket.handshake.headers.origin,
+                        userAgent: socket.handshake.headers['user-agent']?.substring(0, 50)
+                    }
+                }
+            });
+            
             // 사용자 레이팅 정보 로드
             await AuthHandler.loadUserRating(socket);
+
+            console.log(`👤 사용자 정보:`, {
+                userId: (socket as any).userId,
+                username: (socket as any).username,
+                rating: (socket as any).rating
+            });
 
             // 중복 연결 처리
             this.connectionHandler.handleDuplicateConnection(
@@ -57,7 +75,6 @@ export class GameManager {
                 this.queueHandler.removeFromSimpleQueue.bind(this.queueHandler)
             );
             
-            console.log(`🔌 새 소켓 연결: ${socket.id}`);
             console.log(`✅ 플레이어 연결 완료: ${(socket as any).userId}`);
             
             this.handlePlayerConnection(socket);

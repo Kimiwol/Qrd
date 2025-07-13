@@ -50,7 +50,7 @@ const MainMenu: React.FC = () => {
   const [matchmakingType, setMatchmakingType] = useState<'ranked' | 'custom' | null>(null);
   const [notification, setNotification] = useState<{type: 'success' | 'info' | 'error', message: string} | null>(null);
   
-  const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:4000';
+  const apiUrl = process.env.REACT_APP_API_URL || 'https://quoridoronline-5ngr.onrender.com';
 
   const fetchUserProfile = useCallback(async () => {
     try {

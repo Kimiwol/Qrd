@@ -77,10 +77,10 @@ const Login = () => {
     e.preventDefault();
     setError('');
     
-    const apiUrl = process.env.REACT_APP_API_URL;
+    const apiUrl = process.env.REACT_APP_API_URL || 'https://quoridoronline-5ngr.onrender.com';
     console.log('API URL:', apiUrl);
     console.log('Environment:', process.env.NODE_ENV);
-    console.log('All env vars:', Object.keys(process.env).filter(key => key.startsWith('REACT_APP_')));
+    console.log('All env vars:', Object.keys(process.env || {}).filter(key => key.startsWith('REACT_APP_')));
     
     if (!apiUrl) {
       setError('서버 설정이 올바르지 않습니다. 관리자에게 문의하세요.');

@@ -42,17 +42,29 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
 
   const connectSocket = useCallback(() => {
     const token = localStorage.getItem('token');
+    console.log('🔌 소켓 연결 시도...', {
+      hasToken: !!token,
+      hasSocket: !!socket,
+      socketConnected: socket?.connected,
+      wsUrl: process.env.REACT_APP_WS_URL || 'ws://localhost:4000'
+    });
+    
     // 소켓이 이미 연결되어 있거나 토큰이 없으면 중단
-    if (socket?.connected || !token) return;
+    if (socket?.connected || !token) {
+      console.log('🚫 연결 중단:', { alreadyConnected: socket?.connected, noToken: !token });
+      return;
+    }
 
-    console.log('🔌 소켓 연결 시도...');
+    console.log('� 새 소켓 생성 중...');
     
     // 기존 소켓이 있다면 재사용, 없다면 새로 생성
-    const newSocket = socket || io(process.env.REACT_APP_WS_URL || 'ws://localhost:4000', {
+    const wsUrl = process.env.REACT_APP_WS_URL || 'wss://quoridoronline-5ngr.onrender.com';
+    const newSocket = socket || io(wsUrl, {
       auth: { token },
       autoConnect: false // 수동으로 connect() 호출
     });
 
+    console.log('🚀 소켓 연결 실행...');
     if (!newSocket.connected) {
         newSocket.connect();
     }

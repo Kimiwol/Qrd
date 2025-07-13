@@ -88,7 +88,7 @@ const Register = () => {
     }
 
     try {
-      const apiUrl = process.env.REACT_APP_API_URL;
+      const apiUrl = process.env.REACT_APP_API_URL || 'https://quoridoronline-5ngr.onrender.com';
       console.log('API URL:', apiUrl);
       console.log('Attempting register request to:', `${apiUrl}/api/register`);
       
