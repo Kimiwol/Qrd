@@ -410,6 +410,22 @@ const MainMenu: React.FC = () => {
     }
   };
 
+  const debugMatchmaking = () => {
+    if (socket) {
+      console.log('🐛 디버그 매칭 정보 요청');
+      socket.emit('debugMatchmaking');
+      
+      // 디버그 정보 이벤트 리스너 추가
+      socket.on('debugInfo', (data: any) => {
+        console.log('🐛 디버그 정보 수신:', data);
+        setNotification({
+          type: 'info',
+          message: `디버그: ${data.queues.ranked.size + data.queues.custom.size}명 대기 중`
+        });
+      });
+    }
+  };
+
   return (
     <div className="main-menu">
       {/* 알림 팝업 */}
@@ -612,6 +628,14 @@ const MainMenu: React.FC = () => {
                     style={{touchAction: 'manipulation', background: '#9C27B0', color: 'white'}}
                   >
                     봇끼리 게임 테스트
+                  </button>
+                  <button 
+                    onClick={debugMatchmaking}
+                    disabled={loading}
+                    className="match-btn test-match-btn"
+                    style={{touchAction: 'manipulation', background: '#607D8B', color: 'white'}}
+                  >
+                    🐛 매칭 디버그
                   </button>
                 </div>
               </div>
