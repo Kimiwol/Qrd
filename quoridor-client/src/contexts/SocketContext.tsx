@@ -96,10 +96,6 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         disconnectSocket();
-      } else if (newSocket.io && newSocket.io._reconnectionAttempts >= 5) {
-        // 재연결 시도 횟수 초과 시 연결 중단
-        console.error('재연결 시도 횟수 초과, 연결 중단');
-        disconnectSocket();
       } else {
         // 인증 에러가 아니면 3초 후 자동 재연결 시도
         setTimeout(() => {
