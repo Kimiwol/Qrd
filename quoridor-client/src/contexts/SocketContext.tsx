@@ -61,7 +61,8 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     const wsUrl = process.env.REACT_APP_WS_URL || 'wss://quoridoronline-5ngr.onrender.com';
     const newSocket = socket || io(wsUrl, {
       auth: { token },
-      autoConnect: false // 수동으로 connect() 호출
+      autoConnect: false, // 수동으로 connect() 호출
+      transports: ['websocket', 'polling']
     });
 
     console.log('🚀 소켓 연결 실행...');
