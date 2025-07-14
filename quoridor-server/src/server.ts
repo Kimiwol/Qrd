@@ -21,19 +21,19 @@ console.log('Allowed CORS origins:', config.allowedOrigins);
 
 const io = new Server(httpServer, {
     cors: {
-        origin: ['https://qrdonline.netlify.app'],
+        origin: config.allowedOrigins,
         methods: ["GET", "POST"],
         credentials: true,
-        allowedHeaders: ["Content-Type", "Authorization"]
+        allowedHeaders: ["Content-Type", "Authorization", "Origin"]
     },
     transports: ['websocket'] // WebSocket-only
 });
 
 app.use(cors({
-    origin: ['https://qrdonline.netlify.app'],
+    origin: config.allowedOrigins,
     credentials: true,
     methods: ["GET", "POST"],
-    allowedHeaders: ["Content-Type", "Authorization"]
+    allowedHeaders: ["Content-Type", "Authorization", "Origin"]
 }));
 app.use(express.json());
 
