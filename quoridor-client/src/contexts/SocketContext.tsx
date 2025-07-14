@@ -62,7 +62,11 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     const newSocket = socket || io(wsUrl, {
       auth: { token },
       autoConnect: false, // 수동으로 connect() 호출
-      transports: ['websocket', 'polling']
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      timeout: 5000
     });
 
     console.log('🚀 소켓 연결 실행...');
@@ -86,11 +90,19 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
 
     newSocket.on('connect_error', (error: Error) => {
       console.error('❌ 소켓 연결 에러:', error.message);
+      // 인증 에러 처리
       if (error.message.includes('인증')) { // 'Authentication error' 대신 '인증'으로 변경
         console.log('인증 오류로 인한 연결 실패. 로그인 정보 삭제.');
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         disconnectSocket();
+      } else {
+        // 인증 에러가 아니면 1초 후 자동 재연결 시도
+        setTimeout(() => {
+          if (!newSocket.connected) {
+            newSocket.connect();
+          }
+        }, 1000);
       }
     });
 
