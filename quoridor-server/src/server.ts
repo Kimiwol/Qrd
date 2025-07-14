@@ -26,7 +26,7 @@ const io = new Server(httpServer, {
         credentials: true,
         allowedHeaders: ["Content-Type", "Authorization"]
     },
-    transports: ['websocket', 'polling']
+    transports: ['websocket'] // WebSocket-only
 });
 
 app.use(cors({
