@@ -141,7 +141,7 @@ const Board: React.FC<BoardProps> = ({ gameState, onCellClick, onWallPlace, play
 
   const validMoves = useMemo(() => {
     if (!me || !isMyTurn) return [];
-    return me.validMoves.map(transformPosition);
+    return (me && me.validMoves ? me.validMoves : []).map(transformPosition);
   }, [me, isMyTurn]);
 
   const handleCellClick = (x: number, y: number) => {
