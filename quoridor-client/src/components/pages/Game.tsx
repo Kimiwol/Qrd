@@ -287,9 +287,22 @@ function Game() {
 
     // 타입 오류 우회: 실제 데이터 구조에 맞게 player1, player2를 as any로 접근
     const gs: any = gameState;
+    // 기본 시작 위치 (player1: 아래, player2: 위)
+    const defaultPositions = {
+      player1: { x: 4, y: 8 },
+      player2: { x: 4, y: 0 }
+    };
     const players: Player[] = [
-      { id: 'player1', ...gs.player1 },
-      { id: 'player2', ...gs.player2 }
+      {
+        id: 'player1',
+        ...gs.player1,
+        position: gs.player1?.position ?? defaultPositions.player1
+      },
+      {
+        id: 'player2',
+        ...gs.player2,
+        position: gs.player2?.position ?? defaultPositions.player2
+      }
     ];
     const safeWalls = gs.walls ?? [];
 

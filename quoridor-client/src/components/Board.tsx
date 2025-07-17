@@ -14,44 +14,42 @@ const BOARD_SIZE = 9;
 
 const BoardWrapper = styled.div`
   width: 100%;
-  max-width: 70vh; /* 화면 높이에 비례하여 최대 너비 설정 */
+  max-width: 60vh;
   margin: auto;
-  aspect-ratio: 1 / 1; /* 항상 정사각형 비율 유지 */
-  padding: 20px;
+  aspect-ratio: 1 / 1;
+  padding: 12px;
+  background: #e9e4d5;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   box-sizing: border-box;
 `;
 
 const BoardContainer = styled.div`
   --board-size: ${BOARD_SIZE};
   --cell-size: calc((100% - (var(--board-size) - 1) * var(--gap)) / var(--board-size));
-  --gap: 8px;
+  --gap: 6px;
 
   display: grid;
   grid-template-columns: repeat(var(--board-size), 1fr);
   grid-template-rows: repeat(var(--board-size), 1fr);
   gap: var(--gap);
-  background-color: #e0e0e0;
-  padding: 20px;
+  background: repeating-linear-gradient(135deg, #e9e4d5 0 20px, #d7ccc8 20px 40px);
+  padding: 10px;
   position: relative;
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
   width: 100%;
   height: 100%;
   box-sizing: border-box;
 
   @media (max-width: 768px) {
-    --gap: 6px;
-    padding: 15px;
-  }
-  
-  @media (max-width: 480px) {
     --gap: 4px;
-    padding: 10px;
+    padding: 6px;
   }
 `;
 
 const Cell = styled.div<{ isMyTurn: boolean; isValidMove: boolean; }>`
-  background-color: ${props => props.isValidMove ? '#a5d6a7' : '#ffffff'};
+  background-color: ${props => props.isValidMove ? '#ffe082' : '#fff'};
   width: 100%;
   height: 100%;
   display: flex;
@@ -59,13 +57,13 @@ const Cell = styled.div<{ isMyTurn: boolean; isValidMove: boolean; }>`
   align-items: center;
   cursor: ${props => props.isMyTurn ? 'pointer' : 'default'};
   position: relative;
-  transition: all 0.2s ease;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s;
+  border-radius: 15%;
+  box-shadow: none;
 
   &:hover {
-    background-color: ${props => props.isMyTurn && props.isValidMove ? '#81c784' : (props.isMyTurn ? '#eeeeee' : '')};
-    transform: ${props => props.isMyTurn ? 'translateY(-2px)' : 'none'};
+    background-color: ${props => props.isMyTurn && props.isValidMove ? '#ffe082' : (props.isMyTurn ? '#f5f5f5' : '')};
+    transform: ${props => props.isMyTurn ? 'translateY(-1px)' : 'none'};
   }
 `;
 
@@ -74,22 +72,21 @@ const Player = styled.div<{ color: string; isMe: boolean }>`
   height: 70%;
   border-radius: 50%;
   background-color: ${props => props.color};
-  border: 3px solid ${props => props.isMe ? '#ffeb3b' : 'rgba(0,0,0,0.2)'};
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  border: 2.5px solid ${props => props.isMe ? '#795548' : '#bdbdbd'};
+  box-shadow: none;
   display: flex;
   justify-content: center;
   align-items: center;
-  color: white;
-  font-weight: bold;
+  color: #fff;
+  font-weight: 600;
   font-size: 1em;
 `;
 
 const Wall = styled.div<{ orientation: 'horizontal' | 'vertical' }>`
   position: absolute;
-  background-color: #8d6e63;
-  border-radius: 4px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-  
+  background-color: #a1887f;
+  border-radius: 3px;
+  box-shadow: none;
   ${({ orientation }) =>
     orientation === 'horizontal'
       ? `
@@ -218,7 +215,7 @@ const Board: React.FC<BoardProps> = ({ gameState, onCellClick, onWallPlace, play
         })}
 
         {/* Placed Walls */}
-        {gameState.walls.map((wall, index) => (
+        {(gameState.walls || []).map((wall, index) => (
           <Wall
             key={`wall-${index}`}
             orientation={wall.orientation}
