@@ -1,3 +1,8 @@
+  // gameState, playerInfo 값 콘솔 출력 (디버깅용)
+  useEffect(() => {
+    console.log('gameState', gameState);
+    console.log('playerInfo', playerInfo);
+  }, [gameState, playerInfo]);
 import React, { useEffect, useState, useCallback } from 'react';
 import styled from 'styled-components';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
@@ -345,6 +350,11 @@ const PlayerTimer = styled.div<{ isTimeRunningOut: boolean; isActive: boolean }>
 `;
 
 function Game() {
+  // gameState, playerInfo 값 콘솔 출력 (디버깅용)
+  useEffect(() => {
+    console.log('gameState', gameState);
+    console.log('playerInfo', playerInfo);
+  }, [gameState, playerInfo]);
   const { socket } = useSocket();
   const navigate = useNavigate();
   const { roomId } = useParams<{ roomId: string }>();
@@ -355,6 +365,12 @@ function Game() {
   const [gameState, setGameState] = useState<GameState | null>(initialState?.gameState ?? null);
   const [playerId, setPlayerId] = useState<string | null>(initialState?.playerId ?? null);
   const [playerInfo, setPlayerInfo] = useState<{ me: PlayerInfo; opponent: PlayerInfo } | null>(initialState?.playerInfo ?? null);
+
+  // gameState, playerInfo 값 콘솔 출력 (디버깅용)
+  useEffect(() => {
+    console.log('gameState', gameState);
+    console.log('playerInfo', playerInfo);
+  }, [gameState, playerInfo]);
   
   const [isReady, setIsReady] = useState(false); // 렌더링 준비 상태 추가
 
