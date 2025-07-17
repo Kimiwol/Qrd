@@ -1,8 +1,3 @@
-  // gameState, playerInfo 값 콘솔 출력 (디버깅용)
-  useEffect(() => {
-    console.log('gameState', gameState);
-    console.log('playerInfo', playerInfo);
-  }, [gameState, playerInfo]);
 import React, { useEffect, useState, useCallback } from 'react';
 import styled from 'styled-components';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
@@ -350,11 +345,6 @@ const PlayerTimer = styled.div<{ isTimeRunningOut: boolean; isActive: boolean }>
 `;
 
 function Game() {
-  // gameState, playerInfo 값 콘솔 출력 (디버깅용)
-  useEffect(() => {
-    console.log('gameState', gameState);
-    console.log('playerInfo', playerInfo);
-  }, [gameState, playerInfo]);
   const { socket } = useSocket();
   const navigate = useNavigate();
   const { roomId } = useParams<{ roomId: string }>();
