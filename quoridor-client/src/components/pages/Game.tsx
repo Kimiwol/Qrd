@@ -7,6 +7,7 @@ import {
   GameArea,
   InfoContainer,
   BoardArea,
+  InfoSidebar,
   PlayerCard,
   PlayerAvatar,
   PlayerDetails,
@@ -441,6 +442,73 @@ function Game() {
   const myPlayer = transformedGameState.players.find((p: Player) => p.id === playerId);
   const opponentPlayer = transformedGameState.players.find((p: Player) => p.id !== playerId);
 
+  // 최근 수(lastMove)는 서버에서 전달, 최단 경로(shortestPaths)는 클라이언트에서 계산
+  const [lastMove, setLastMove] = useState<{player: string, from: Position, to: Position} | null>(null);
+  const [shortestPaths, setShortestPaths] = useState<{[playerId: string]: number}>({});
+
+  // 최단 경로 계산 (BFS, 9x9 보드, 벽 반영)
+  function bfsShortestPath(start: Position, goalRows: number[], walls: any[]): number {
+    const BOARD_SIZE = 9;
+    const queue: {pos: Position, dist: number}[] = [{pos: start, dist: 0}];
+    const visited = Array.from({length: BOARD_SIZE}, () => Array(BOARD_SIZE).fill(false));
+    visited[start.x][start.y] = true;
+    const directions = [
+      {dx: 0, dy: -1}, // up
+      {dx: 0, dy: 1},  // down
+      {dx: -1, dy: 0}, // left
+      {dx: 1, dy: 0},  // right
+    ];
+    // 벽 정보 파싱 (간단화, 실제 로직에 맞게 보완 필요)
+    const isBlocked = (x1: number, y1: number, x2: number, y2: number) => {
+      for (const wall of walls) {
+        if (wall.orientation === 'horizontal') {
+          // 가로벽: (x, y)~(x+1, y) 사이 이동 차단
+          if ((y1 === wall.position.y && y2 === wall.position.y + 1) || (y2 === wall.position.y && y1 === wall.position.y + 1)) {
+            if ((x1 === wall.position.x && x2 === wall.position.x + 1) || (x2 === wall.position.x && x1 === wall.position.x + 1)) {
+              return true;
+            }
+          }
+        } else {
+          // 세로벽: (x, y)~(x, y+1) 사이 이동 차단
+          if ((x1 === wall.position.x && x2 === wall.position.x + 1) || (x2 === wall.position.x && x1 === wall.position.x + 1)) {
+            if ((y1 === wall.position.y && y2 === wall.position.y + 1) || (y2 === wall.position.y && y1 === wall.position.y + 1)) {
+              return true;
+            }
+          }
+        }
+      }
+      return false;
+    };
+    while (queue.length > 0) {
+      const {pos, dist} = queue.shift()!;
+      if (goalRows.includes(pos.y)) return dist;
+      for (const {dx, dy} of directions) {
+        const nx = pos.x + dx, ny = pos.y + dy;
+        if (nx < 0 || nx >= BOARD_SIZE || ny < 0 || ny >= BOARD_SIZE) continue;
+        if (visited[nx][ny]) continue;
+        if (isBlocked(pos.x, pos.y, nx, ny)) continue;
+        visited[nx][ny] = true;
+        queue.push({pos: {x: nx, y: ny}, dist: dist + 1});
+      }
+    }
+    return -1; // 도달 불가
+  }
+
+  useEffect(() => {
+    if (gameState && (gameState as any).lastMove) {
+      setLastMove((gameState as any).lastMove);
+    }
+    // 최단 경로 계산 (플레이어1: y==0, 플레이어2: y==8 도달 목표)
+    if (gameState && gameState.players && gameState.walls) {
+      const paths: {[playerId: string]: number} = {};
+      for (const p of gameState.players) {
+        const goalRows = p.id === 'player1' ? [0] : [8];
+        paths[p.id] = bfsShortestPath(p.position, goalRows, gameState.walls);
+      }
+      setShortestPaths(paths);
+    }
+  }, [gameState]);
+
   return (
     <GameContainer>
       <Header>
@@ -449,27 +517,54 @@ function Game() {
           기권하기
         </HeaderQuitButton>
       </Header>
-      
       <GameArea>
-        {opponentPlayer && (
-          <InfoContainer>
-            {renderPlayerCard(opponentPlayer, 'top')}
-          </InfoContainer>
-        )}
-        <BoardArea>
-          <Board 
-            gameState={transformedGameState} 
-            onCellClick={handleCellClick}
-            onWallPlace={handleWallPlacement}
-            playerId={playerId}
-            isMyTurn={gameState!.currentTurn === playerId}
-          />
-        </BoardArea>
-        {myPlayer && (
-          <InfoContainer>
-            {renderPlayerCard(myPlayer, 'bottom')}
-          </InfoContainer>
-        )}
+        <div style={{flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+          {opponentPlayer && (
+            <InfoContainer>
+              {renderPlayerCard(opponentPlayer, 'top')}
+            </InfoContainer>
+          )}
+          <BoardArea>
+            <Board 
+              gameState={transformedGameState} 
+              onCellClick={handleCellClick}
+              onWallPlace={handleWallPlacement}
+              playerId={playerId}
+              isMyTurn={gameState!.currentTurn === playerId}
+            />
+          </BoardArea>
+          {myPlayer && (
+            <InfoContainer>
+              {renderPlayerCard(myPlayer, 'bottom')}
+            </InfoContainer>
+          )}
+        </div>
+        <InfoSidebar>
+          <div style={{marginBottom: '1.2rem'}}>
+            <strong>현재 라운드/턴</strong><br />
+            {gameState?.currentTurn ? (
+              <span>{gameState.currentTurn === playerId ? '내 턴' : '상대 턴'}</span>
+            ) : '정보 없음'}
+          </div>
+          <div style={{marginBottom: '1.2rem'}}>
+            <strong>상대방 최근 수</strong><br />
+            {lastMove && lastMove.player !== playerId ? (
+              <span>
+                {`(${lastMove.from.x},${lastMove.from.y}) → (${lastMove.to.x},${lastMove.to.y})`}
+              </span>
+            ) : '정보 없음'}
+          </div>
+          <div>
+            <strong>최단 경로 길이</strong>
+            <ul style={{margin: '0.5rem 0 0 0.5rem', padding: 0, listStyle: 'none'}}>
+              {transformedGameState.players.map((p: Player) => (
+                <li key={p.id}>
+                  {p.id === playerId ? '나' : '상대'}: {shortestPaths[p.id] ?? '계산 중'}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </InfoSidebar>
       </GameArea>
 
       {winner && (

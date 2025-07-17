@@ -1,15 +1,34 @@
+export const InfoSidebar = styled.div`
+  width: 220px;
+  min-width: 180px;
+  max-width: 260px;
+  background: #ede3d1;
+  color: #2d1b12;
+  border-radius: 10px;
+  box-shadow: none;
+  padding: 1.2rem 1.1rem;
+  margin-left: 2.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  font-size: 1rem;
+  font-weight: 400;
+  @media (max-width: 900px) {
+    display: none;
+  }
+`;
 import styled from 'styled-components';
 
 export const GameContainer = styled.div`
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: #f5f5f5;
-  padding: 10px;
+  background: #2d1b12;
+  padding: 0;
   box-sizing: border-box;
-  font-family: 'Segoe UI', 'Arial', sans-serif;
+  font-family: 'Noto Sans KR', 'Segoe UI', Arial, sans-serif;
   @media (max-width: 768px) {
-    padding: 5px;
+    padding: 0;
   }
 `;
 
@@ -17,46 +36,45 @@ export const Header = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 24px;
-  background: #fff;
-  border-bottom: 1px solid #e0e0e0;
-  border-radius: 0 0 10px 10px;
-  margin-bottom: 18px;
+  padding: 2.5rem 2.5rem 1.5rem 2.5rem;
+  background: #22140b;
+  border-bottom: 1px solid #3e2723;
+  border-radius: 0;
+  margin-bottom: 0;
   position: relative;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  box-shadow: none;
   @media (max-width: 768px) {
-    padding: 8px 12px;
-    margin-bottom: 10px;
+    padding: 1.2rem 1rem 0.7rem 1rem;
   }
 `;
 
 export const Title = styled.h1`
-  color: #333;
+  color: #fff;
   margin: 0;
-  font-size: 22px;
-  font-weight: 600;
+  font-size: 1.7rem;
+  font-weight: 500;
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  letter-spacing: 1px;
+  letter-spacing: 0.04em;
   @media (max-width: 768px) {
-    font-size: 17px;
+    font-size: 1.1rem;
   }
 `;
 
 export const HeaderQuitButton = styled.button`
-  background: #fff;
-  color: #b71c1c;
-  border: 1px solid #b71c1c;
-  padding: 7px 16px;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
+  background: #2d1b12;
+  color: #fff;
+  border: 1px solid #4e342e;
+  padding: 0.45rem 1.1rem;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  font-weight: 400;
   cursor: pointer;
   margin-left: auto;
-  transition: background 0.2s, color 0.2s;
+  transition: background 0.15s;
   &:hover {
-    background: #b71c1c;
+    background: #3e2723;
     color: #fff;
   }
   @media (max-width: 768px) {
@@ -69,33 +87,23 @@ export const GameArea = styled.div`
   display: flex;
   flex-direction: row;
   flex: 1;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  gap: 12px;
-  padding: 12px;
+  gap: 0;
+  padding: 0;
   width: 100%;
   max-width: 1100px;
   margin: 0 auto;
-  @media (max-width: 768px) {
-    flex-direction: column;
-    padding: 8px;
-    gap: 8px;
-  }
 `;
 
 export const InfoContainer = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 220px;
-  min-width: 180px;
-  max-width: 260px;
-  @media (max-width: 768px) {
-    width: 100%;
-    max-width: 600px;
-    min-width: unset;
-    margin: 0 auto;
-  }
+  width: 100%;
+  max-width: 600px;
+  min-width: unset;
+  margin: 0 auto;
 `;
 
 export const BoardArea = styled.div`
@@ -104,8 +112,8 @@ export const BoardArea = styled.div`
   justify-content: center;
   align-items: center;
   width: 100%;
-  max-width: 80vh;
-  max-height: 80vh;
+  max-width: 60vh;
+  max-height: 60vh;
   aspect-ratio: 1 / 1;
   min-height: 0;
 `;
@@ -113,8 +121,13 @@ export const BoardArea = styled.div`
 export const PlayerCard = styled.div<{ isCurrentTurn: boolean; isPlayer1: boolean; position: 'top' | 'bottom' }>`
   display: flex;
   align-items: center;
-  background: #fff;
-  color: #333;
+  background: #ede3d1;
+  color: #2d1b12;
+  border-radius: 8px;
+  box-shadow: none;
+  padding: 1.1rem 1.2rem;
+  font-size: 1rem;
+  font-weight: 400;
   padding: 13px 18px;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);

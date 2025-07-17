@@ -18,7 +18,7 @@ const BoardWrapper = styled.div`
   margin: auto;
   aspect-ratio: 1 / 1;
   padding: 12px;
-  background: #e9e4d5;
+  background: #4e342e; /* 짙은 단색 */
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   box-sizing: border-box;
@@ -33,7 +33,7 @@ const BoardContainer = styled.div`
   grid-template-columns: repeat(var(--board-size), 1fr);
   grid-template-rows: repeat(var(--board-size), 1fr);
   gap: var(--gap);
-  background: repeating-linear-gradient(135deg, #e9e4d5 0 20px, #d7ccc8 20px 40px);
+  background: #4e342e; /* 보드도 단색 */
   padding: 10px;
   position: relative;
   border-radius: 8px;
@@ -49,7 +49,7 @@ const BoardContainer = styled.div`
 `;
 
 const Cell = styled.div<{ isMyTurn: boolean; isValidMove: boolean; }>`
-  background-color: ${props => props.isValidMove ? '#ffe082' : '#fff'};
+  background-color: ${props => props.isValidMove ? '#ffe082' : '#bdbdbd'};
   width: 100%;
   height: 100%;
   display: flex;
@@ -72,7 +72,7 @@ const Player = styled.div<{ color: string; isMe: boolean }>`
   height: 70%;
   border-radius: 50%;
   background-color: ${props => props.color};
-  border: 2.5px solid ${props => props.isMe ? '#795548' : '#bdbdbd'};
+  border: 2.5px solid ${props => props.isMe ? '#ffd600' : '#bdbdbd'};
   box-shadow: none;
   display: flex;
   justify-content: center;
@@ -82,9 +82,9 @@ const Player = styled.div<{ color: string; isMe: boolean }>`
   font-size: 1em;
 `;
 
-const Wall = styled.div<{ orientation: 'horizontal' | 'vertical' }>`
+const Wall = styled.div<{ orientation: 'horizontal' | 'vertical'; color: string }>`
   position: absolute;
-  background-color: #a1887f;
+  background-color: ${props => props.color};
   border-radius: 3px;
   box-shadow: none;
   ${({ orientation }) =>
@@ -178,7 +178,7 @@ const Board: React.FC<BoardProps> = ({ gameState, onCellClick, onWallPlace, play
         onClick={() => handleCellClick(x, y)}
       >
         {playerOnCell && (
-          <Player color={playerOnCell.id === gameState.players[0].id ? '#d32f2f' : '#1976d2'} isMe={playerOnCell.id === playerId}>
+          <Player color={playerOnCell.id === gameState.players[0].id ? '#fff' : '#222'} isMe={playerOnCell.id === playerId}>
             {playerOnCell.id === playerId ? 'Me' : ''}
           </Player>
         )}
@@ -215,13 +215,23 @@ const Board: React.FC<BoardProps> = ({ gameState, onCellClick, onWallPlace, play
         })}
 
         {/* Placed Walls */}
-        {(gameState.walls || []).map((wall, index) => (
-          <Wall
-            key={`wall-${index}`}
-            orientation={wall.orientation}
-            style={getWallStyle(wall)}
-          />
-        ))}
+        {(gameState.walls || []).map((wall, index) => {
+          // 벽의 y좌표가 4 이상이면 player1(아래쪽) 색, 3 이하이면 player2(위쪽) 색
+          let color = '#fff';
+          if (wall.position.y >= 4) {
+            color = '#fff'; // player1(백)
+          } else {
+            color = '#222'; // player2(흑)
+          }
+          return (
+            <Wall
+              key={`wall-${index}`}
+              orientation={wall.orientation}
+              color={color}
+              style={getWallStyle(wall)}
+            />
+          );
+        })}
 
         {/* Wall Placement Areas */}
         {isMyTurn && Array.from({ length: (BOARD_SIZE - 1) * (BOARD_SIZE - 1) }).map((_, index) => {
