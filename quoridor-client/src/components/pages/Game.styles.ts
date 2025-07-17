@@ -1,3 +1,6 @@
+
+import styled from 'styled-components';
+
 export const InfoSidebar = styled.div`
   width: 220px;
   min-width: 180px;
@@ -17,7 +20,6 @@ export const InfoSidebar = styled.div`
     display: none;
   }
 `;
-import styled from 'styled-components';
 
 export const GameContainer = styled.div`
   display: flex;

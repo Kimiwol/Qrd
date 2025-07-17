@@ -61,6 +61,10 @@ function Game() {
   const [showContinueDialog, setShowContinueDialog] = useState(false);
   const [showQuitDialog, setShowQuitDialog] = useState(false);
 
+  // 최근 수(lastMove)는 서버에서 전달, 최단 경로(shortestPaths)는 클라이언트에서 계산
+  const [lastMove, setLastMove] = useState<{player: string, from: Position, to: Position} | null>(null);
+  const [shortestPaths, setShortestPaths] = useState<{[playerId: string]: number}>({});
+
   // Redirect to menu if the game page is loaded without necessary state
   useEffect(() => {
     console.log('🔍 Game.tsx 초기화 체크:', {
@@ -439,12 +443,9 @@ function Game() {
       );
   }
 
+
   const myPlayer = transformedGameState.players.find((p: Player) => p.id === playerId);
   const opponentPlayer = transformedGameState.players.find((p: Player) => p.id !== playerId);
-
-  // 최근 수(lastMove)는 서버에서 전달, 최단 경로(shortestPaths)는 클라이언트에서 계산
-  const [lastMove, setLastMove] = useState<{player: string, from: Position, to: Position} | null>(null);
-  const [shortestPaths, setShortestPaths] = useState<{[playerId: string]: number}>({});
 
   // 최단 경로 계산 (BFS, 9x9 보드, 벽 반영)
   function bfsShortestPath(start: Position, goalRows: number[], walls: any[]): number {
@@ -493,6 +494,7 @@ function Game() {
     }
     return -1; // 도달 불가
   }
+
 
   useEffect(() => {
     if (gameState && (gameState as any).lastMove) {
