@@ -32,17 +32,37 @@ const MainMenu: React.FC = () => {
   // setLoading, setMessage, apiUrl, roomCode, setRoomCode, fetchCurrentRoom
   // (중복 선언 방지, 이미 있으면 추가하지 않음)
   // fetchCurrentRoom 임시 선언
-  const fetchCurrentRoom = useCallback(async () => {}, []);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'profile' | 'ranked' | 'custom' | 'leaderboard'>('profile');
+  const apiUrl = process.env.REACT_APP_API_URL || 'https://quoridoronline-5ngr.onrender.com';
+  const fetchCurrentRoom = useCallback(async () => {}, []);
   // 매치 발견 핸들러
   const handleMatchFound = (data: { opponent: string }) => {
     setMatchmakingStatus('found');
     setMessage(`상대를 찾았습니다: ${data.opponent}. 곧 게임을 시작합니다...`);
   };
 
-  // 임시 fetchUserProfile (실제 구현은 필요에 따라 추가)
-  const fetchUserProfile = useCallback(async () => {}, []);
+
+
+  // 실제 프로필 정보 불러오기 구현
+  const fetchUserProfile = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${apiUrl}/api/profile`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUserProfile(data);
+      }
+    } catch (error) {
+      console.error('프로필 정보 조회 실패:', error);
+    }
+  }, [apiUrl]);
+  // 페이지 진입 시 프로필 정보 불러오기
+  useEffect(() => {
+    fetchUserProfile();
+  }, [fetchUserProfile]);
   const navigate = useNavigate();
   const { socket, connectSocket } = useSocket();
   const [notification, setNotification] = useState<{type: 'success' | 'info' | 'error', message: string} | null>(null);
@@ -56,7 +76,6 @@ const MainMenu: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [roomCode, setRoomCode] = useState('');
   const [currentRoom, setCurrentRoom] = useState<any>(null);
-  const apiUrl = process.env.REACT_APP_API_URL || 'https://quoridoronline-5ngr.onrender.com';
 
   // 누락된 핸들러 함수 선언
   const handleNotification = (data: { type: 'success' | 'info' | 'error', message: string }) => {
