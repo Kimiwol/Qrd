@@ -511,20 +511,7 @@ function Game() {
   }
 
 
-  useEffect(() => {
-    if (gameState && (gameState as any).lastMove) {
-      setLastMove((gameState as any).lastMove);
-    }
-    // 최단 경로 계산 (플레이어1: y==0, 플레이어2: y==8 도달 목표)
-    if (gameState && gameState.players && gameState.walls) {
-      const paths: {[playerId: string]: number} = {};
-      for (const p of gameState.players) {
-        const goalRows = p.id === 'player1' ? [0] : [8];
-        paths[p.id] = bfsShortestPath(p.position, goalRows, gameState.walls);
-      }
-      setShortestPaths(paths);
-    }
-  }, [gameState]);
+  // ...중복된 useEffect 제거...
 
   return (
     <GameContainer>
