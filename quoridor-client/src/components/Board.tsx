@@ -269,6 +269,7 @@ const Board: React.FC<BoardProps> = ({ gameState, onCellClick, onWallPlace, play
         {hoveredWall && isMyTurn && (
           <Wall
             orientation={hoveredWall.orientation}
+            color="rgba(141, 110, 99, 0.7)"
             style={{ ...getWallStyle(hoveredWall), backgroundColor: 'rgba(141, 110, 99, 0.7)' }}
           />
         )}
