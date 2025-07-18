@@ -96,7 +96,12 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
         localStorage.removeItem('user');
         disconnectSocket();
       } else {
-        // 인증 에러가 아니면 3초 후 자동 재연결 시도
+        // 인증 에러가 아니면 사용자에게 알림 표시
+        if (window && window.dispatchEvent) {
+          const event = new CustomEvent('socketError', { detail: error.message });
+          window.dispatchEvent(event);
+        }
+        // 3초 후 자동 재연결 시도
         setTimeout(() => {
           if (!newSocket.connected) {
             newSocket.connect();

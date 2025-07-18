@@ -28,6 +28,20 @@ interface Stats {
 }
 
 const MainMenu: React.FC = () => {
+  // 소켓 에러 알림 처리
+  useEffect(() => {
+    const handleSocketError = (e: any) => {
+      setNotification({ type: 'error', message: '서버 연결 오류: ' + (e.detail || '알 수 없는 오류') });
+      setTimeout(() => setNotification(null), 3000);
+    };
+    window.addEventListener('socketError', handleSocketError);
+    return () => {
+      window.removeEventListener('socketError', handleSocketError);
+    };
+  }, []);
+  // ...existing code...
+
+  // ...existing code...
   // 이미 선언된 것 외 누락된 상태/함수 선언 추가
   // setLoading, setMessage, apiUrl, roomCode, setRoomCode, fetchCurrentRoom
   // (중복 선언 방지, 이미 있으면 추가하지 않음)
@@ -35,7 +49,27 @@ const MainMenu: React.FC = () => {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'profile' | 'ranked' | 'custom' | 'leaderboard'>('profile');
   const apiUrl = process.env.REACT_APP_API_URL || 'https://quoridoronline-5ngr.onrender.com';
-  const fetchCurrentRoom = useCallback(async () => {}, []);
+const fetchCurrentRoom = useCallback(async () => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setCurrentRoom(null);
+      return;
+    }
+    const response = await fetch(`${apiUrl}/api/room/current`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (response.ok) {
+      const data = await response.json();
+      setCurrentRoom(data);
+    } else {
+      setCurrentRoom(null);
+    }
+  } catch (error) {
+    console.error('현재 방 정보 조회 실패:', error);
+    setCurrentRoom(null);
+  }
+}, [apiUrl]);
   // 매치 발견 핸들러
   const handleMatchFound = (data: { opponent: string }) => {
     setMatchmakingStatus('found');
@@ -56,6 +90,8 @@ const MainMenu: React.FC = () => {
         setUserProfile(data);
       }
     } catch (error) {
+      setNotification({ type: 'error', message: '프로필 정보 조회에 실패했습니다.' });
+      setTimeout(() => setNotification(null), 3000);
       console.error('프로필 정보 조회 실패:', error);
     }
   }, [apiUrl]);
@@ -98,6 +134,8 @@ const MainMenu: React.FC = () => {
         setGameHistory(data);
       }
     } catch (error) {
+      setNotification({ type: 'error', message: '최근 전적 조회에 실패했습니다.' });
+      setTimeout(() => setNotification(null), 3000);
       console.error('최근 전적 조회 실패:', error);
     }
   }, [apiUrl]);
@@ -111,6 +149,8 @@ const MainMenu: React.FC = () => {
         setNotices(data);
       }
     } catch (error) {
+      setNotification({ type: 'error', message: '공지/이벤트 조회에 실패했습니다.' });
+      setTimeout(() => setNotification(null), 3000);
       console.error('공지/이벤트 조회 실패:', error);
     }
   }, [apiUrl]);
@@ -124,9 +164,22 @@ const MainMenu: React.FC = () => {
         setStats(data);
       }
     } catch (error) {
+      setNotification({ type: 'error', message: '실시간 통계 조회에 실패했습니다.' });
+      setTimeout(() => setNotification(null), 3000);
       console.error('실시간 통계 조회 실패:', error);
     }
   }, [apiUrl]);
+  // 공지/이벤트, 실시간 통계 데이터 불러오기 (함수 선언 이후에 위치)
+  useEffect(() => {
+    fetchNotices();
+    fetchStats();
+  }, [fetchNotices, fetchStats]);
+
+  // 공지/이벤트, 실시간 통계 데이터 불러오기 (함수 선언 이후에 위치)
+  useEffect(() => {
+    fetchNotices();
+    fetchStats();
+  }, [fetchNotices, fetchStats]);
 
   useEffect(() => {
     const handleGameStarted = (data: {playerId: string, roomId: string, gameState?: any, playerInfo?: any}) => {
@@ -188,7 +241,6 @@ const MainMenu: React.FC = () => {
   const createRoom = async () => {
     setLoading(true);
     setMessage('');
-    
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`${apiUrl}/api/room/create`, {
@@ -198,17 +250,21 @@ const MainMenu: React.FC = () => {
           'Content-Type': 'application/json'
         }
       });
-
       const data = await response.json();
-
       if (response.ok) {
         setMessage(`방이 생성되었습니다! 방 코드: ${data.code}`);
+        setNotification({ type: 'success', message: `방이 생성되었습니다! 방 코드: ${data.code}` });
+        setTimeout(() => setNotification(null), 3000);
         await fetchCurrentRoom();
       } else {
         setMessage(data.error || '방 생성에 실패했습니다.');
+        setNotification({ type: 'error', message: data.error || '방 생성에 실패했습니다.' });
+        setTimeout(() => setNotification(null), 3000);
       }
     } catch (error) {
       setMessage('방 생성에 실패했습니다.');
+      setNotification({ type: 'error', message: '방 생성에 실패했습니다.' });
+      setTimeout(() => setNotification(null), 3000);
     } finally {
       setLoading(false);
     }
@@ -217,12 +273,12 @@ const MainMenu: React.FC = () => {
   const joinRoom = async () => {
     if (!roomCode.trim()) {
       setMessage('방 코드를 입력해주세요.');
+      setNotification({ type: 'error', message: '방 코드를 입력해주세요.' });
+      setTimeout(() => setNotification(null), 3000);
       return;
     }
-
     setLoading(true);
     setMessage('');
-    
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`${apiUrl}/api/room/join`, {
@@ -233,18 +289,22 @@ const MainMenu: React.FC = () => {
         },
         body: JSON.stringify({ code: roomCode })
       });
-
       const data = await response.json();
-
       if (response.ok) {
         setMessage('방에 참여했습니다!');
+        setNotification({ type: 'success', message: '방에 참여했습니다!' });
+        setTimeout(() => setNotification(null), 3000);
         setRoomCode('');
         await fetchCurrentRoom();
       } else {
         setMessage(data.error || '방 참여에 실패했습니다.');
+        setNotification({ type: 'error', message: data.error || '방 참여에 실패했습니다.' });
+        setTimeout(() => setNotification(null), 3000);
       }
     } catch (error) {
       setMessage('방 참여에 실패했습니다.');
+      setNotification({ type: 'error', message: '방 참여에 실패했습니다.' });
+      setTimeout(() => setNotification(null), 3000);
     } finally {
       setLoading(false);
     }
@@ -253,7 +313,6 @@ const MainMenu: React.FC = () => {
   const leaveRoom = async () => {
     setLoading(true);
     setMessage('');
-    
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`${apiUrl}/api/room/leave`, {
@@ -263,17 +322,21 @@ const MainMenu: React.FC = () => {
           'Content-Type': 'application/json'
         }
       });
-
       const data = await response.json();
-
       if (response.ok) {
         setMessage(data.message);
+        setNotification({ type: 'success', message: data.message });
+        setTimeout(() => setNotification(null), 3000);
         setCurrentRoom(null);
       } else {
         setMessage(data.error || '방 나가기에 실패했습니다.');
+        setNotification({ type: 'error', message: data.error || '방 나가기에 실패했습니다.' });
+        setTimeout(() => setNotification(null), 3000);
       }
     } catch (error) {
       setMessage('방 나가기에 실패했습니다.');
+      setNotification({ type: 'error', message: '방 나가기에 실패했습니다.' });
+      setTimeout(() => setNotification(null), 3000);
     } finally {
       setLoading(false);
     }
@@ -362,6 +425,27 @@ const MainMenu: React.FC = () => {
         activeTab={activeTab}
         setActiveTab={(tab) => setActiveTab(tab as 'profile' | 'ranked' | 'custom' | 'leaderboard')}
       />
+      {/* 공지/이벤트 섹션 */}
+      {notices.length > 0 && (
+        <section className="notice-section">
+          <h2>공지/이벤트</h2>
+          <ul>
+            {notices.map(notice => (
+              <li key={notice.id} className={`notice-${notice.type}`}>
+                {notice.message}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {/* 실시간 통계 섹션 */}
+      {stats && (
+        <section className="stats-section">
+          <h2>실시간 통계</h2>
+          <p>접속자 수: {stats.onlineUsers}명</p>
+          <p>진행 중인 게임: {stats.activeGames}개</p>
+        </section>
+      )}
       <main className="menu-content">
         {message && (
           <div className={`message ${message.includes('실패') || message.includes('없습니다') ? 'error' : 'success'}`}>{message}</div>

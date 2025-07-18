@@ -12,6 +12,22 @@ interface RankedSectionProps {
 
 const RankedSection: React.FC<RankedSectionProps> = ({ userProfile, loading, isMatchmaking, matchmakingType, startMatchmaking, debugMatchmaking, socket }) => (
   <div className="ranked-section">
+    {socket && (
+      <React.Fragment>
+        {socket.on && socket.off && (
+          (() => {
+            socket.off('gameStarted');
+            socket.on('gameStarted', (data: any) => {
+              alert('테스트 매칭 성공! 상대: ' + (data.opponent || '알 수 없음'));
+            });
+            socket.off('notification');
+            socket.on('notification', (data: any) => {
+              if (data.type === 'error') alert('테스트 매칭 실패: ' + data.message);
+            });
+          })()
+        )}
+      </React.Fragment>
+    )}
     <h2>🏆 랜덤 매칭</h2>
     {userProfile && (
       <div className="current-rank">

@@ -270,7 +270,7 @@ export class GameLogic {
     }
 
     // 가능한 모든 이동 위치 반환 (봇을 위해)
-    static getValidMoves(position: Position, walls: Wall[], playerId: 'player1' | 'player2'): Position[] {
+    static getValidMoves(position: Position, walls: Wall[], playerId: 'player1' | 'player2', opponentPosition?: Position): Position[] {
         const validMoves: Position[] = [];
         const moves = [
             { row: position.row - 1, col: position.col }, // 위
@@ -280,16 +280,44 @@ export class GameLogic {
         ];
 
         for (const move of moves) {
-            // 점프 로직은 단순화를 위해 생략. isValidMove를 직접 사용.
+            // 기본 한 칸 이동
             if (this.isValidMove(position, move, walls)) {
-                 validMoves.push(move);
+                // 상대방 위치가 있고, 이동하려는 위치가 상대방 위치라면 점프 이동을 시도
+                if (opponentPosition && move.row === opponentPosition.row && move.col === opponentPosition.col) {
+                    // 점프 방향 계산
+                    const dr = opponentPosition.row - position.row;
+                    const dc = opponentPosition.col - position.col;
+                    const jumpRow = opponentPosition.row + dr;
+                    const jumpCol = opponentPosition.col + dc;
+                    // 점프 위치가 보드 내에 있고, 벽에 막혀있지 않으면 점프 이동 추가
+                    if (jumpRow >= 0 && jumpRow <= 8 && jumpCol >= 0 && jumpCol <= 8 &&
+                        !this.isBlockedByWall(opponentPosition, { row: jumpRow, col: jumpCol }, walls)) {
+                        validMoves.push({ row: jumpRow, col: jumpCol });
+                    } else {
+                        // 점프가 불가능하면 대각선 이동(상대방 뒤에 벽이 있을 때)
+                        const diagMoves = [];
+                        if (dr === 0) { // 좌우로 마주보고 있을 때
+                            if (opponentPosition.row > 0 && !this.isBlockedByWall(opponentPosition, { row: opponentPosition.row - 1, col: opponentPosition.col }, walls)) {
+                                diagMoves.push({ row: opponentPosition.row - 1, col: opponentPosition.col });
+                            }
+                            if (opponentPosition.row < 8 && !this.isBlockedByWall(opponentPosition, { row: opponentPosition.row + 1, col: opponentPosition.col }, walls)) {
+                                diagMoves.push({ row: opponentPosition.row + 1, col: opponentPosition.col });
+                            }
+                        } else if (dc === 0) { // 상하로 마주보고 있을 때
+                            if (opponentPosition.col > 0 && !this.isBlockedByWall(opponentPosition, { row: opponentPosition.row, col: opponentPosition.col - 1 }, walls)) {
+                                diagMoves.push({ row: opponentPosition.row, col: opponentPosition.col - 1 });
+                            }
+                            if (opponentPosition.col < 8 && !this.isBlockedByWall(opponentPosition, { row: opponentPosition.row, col: opponentPosition.col + 1 }, walls)) {
+                                diagMoves.push({ row: opponentPosition.row, col: opponentPosition.col + 1 });
+                            }
+                        }
+                        validMoves.push(...diagMoves);
+                    }
+                } else {
+                    validMoves.push(move);
+                }
             }
         }
-        
-        // TODO: 점프 로직 추가 필요. 상대방 위치를 알아야 함.
-        // 현재 구조에서는 GameLogic이 GameState 전체를 모르므로 구현이 복잡함.
-        // GameManager에서 이 메서드를 호출할 때 상대방 위치를 넘겨주도록 수정해야 함.
-
         return validMoves;
     }
 }

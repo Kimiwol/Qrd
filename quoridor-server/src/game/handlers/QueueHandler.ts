@@ -68,7 +68,10 @@ export class QueueHandler {
       const player1 = this.simpleQueue.shift()!;
       const player2 = this.simpleQueue.shift()!;
       console.log(`매칭 성공! Player1: ${player1.id}, Player2: ${player2.id}`);
-      // 게임 생성 로직 호출 필요
+      // 실제 게임 생성 로직 호출
+      this.io.to(player1.id).emit('gameStarted', { opponent: player2.id });
+      this.io.to(player2.id).emit('gameStarted', { opponent: player1.id });
+      // 실제로는 GameManager 등에서 방 생성 및 상태 관리 필요
     }
   }
 

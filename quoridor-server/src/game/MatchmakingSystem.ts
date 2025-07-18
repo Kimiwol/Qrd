@@ -94,6 +94,15 @@ export class MatchmakingSystem {
         
         if (queue.length < 2) {
             console.log(`❌ [Matchmaking] 매칭 불가: 플레이어 부족 (${queue.length}/2)`);
+            // 큐에 있는 모든 플레이어에게 안내 메시지 전송
+            queue.forEach(p => {
+                if (p.socket.connected) {
+                    p.socket.emit('notification', {
+                        type: 'info',
+                        message: '매칭 대기 중입니다. 상대를 기다리고 있습니다.'
+                    });
+                }
+            });
             return null;
         }
 
@@ -112,6 +121,13 @@ export class MatchmakingSystem {
                 console.log(`❌ [Matchmaking] 연결된 플레이어 부족: ${connectedPlayers.length}/2`);
                 // 연결이 끊어진 플레이어들을 큐에서 제거
                 this.queue[gameMode] = connectedPlayers;
+                // 안내 메시지 전송
+                connectedPlayers.forEach(p => {
+                    p.socket.emit('notification', {
+                        type: 'info',
+                        message: '매칭 대기 중입니다. 상대를 기다리고 있습니다.'
+                    });
+                });
                 return null;
             }
             

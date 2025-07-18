@@ -40,6 +40,13 @@ export class AuthHandler {
       next();
     } catch (error) {
       console.error('❌ 소켓 인증 실패:', error instanceof Error ? error.message : error);
+      // 인증 실패 시 클라이언트에게 알림 전송
+      try {
+        socket.emit('notification', {
+          type: 'error',
+          message: '소켓 인증에 실패했습니다. 다시 로그인해 주세요.'
+        });
+      } catch (e) {}
       next(new Error('인증이 필요합니다.'));
     }
   }

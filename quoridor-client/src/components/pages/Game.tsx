@@ -450,18 +450,41 @@ function Game() {
   // 플레이어 정보는 원본 게임 상태에서 가져오고, 화면 표시용 상태는 따로 변환
   const transformedGameState = getGameState();
   if (!transformedGameState) {
-      console.error("Render crash: transformedGameState is null even when ready.");
-      return (
-        <GameContainer>
-          <GameOverlay>
-              오류가 발생했습니다. 메뉴로 돌아갑니다...
-          </GameOverlay>
-        </GameContainer>
-      );
+    console.error("Render crash: transformedGameState is null even when ready.");
+    // 일정 시간 후 자동으로 메뉴로 이동
+    useEffect(() => {
+      const timer = setTimeout(() => {
+        navigate('/menu', { replace: true });
+      }, 3000);
+      return () => clearTimeout(timer);
+    }, []);
+
+    return (
+      <GameContainer>
+        <GameOverlay>
+          <div style={{ textAlign: 'center', color: 'red', marginTop: '40px' }}>
+            <h2>오류가 발생했습니다</h2>
+            <p>게임 데이터가 올바르지 않습니다.</p>
+            <p>3초 후 메인메뉴로 이동합니다.</p>
+            <button onClick={() => navigate('/menu', { replace: true })} style={{ marginTop: '20px' }}>메뉴로 바로 이동</button>
+          </div>
+        </GameOverlay>
+      </GameContainer>
+    );
   }
 
   const myPlayer = transformedGameState.players.find((p: Player) => p.id === playerId);
   const opponentPlayer = transformedGameState.players.find((p: Player) => p.id !== playerId);
+  // 소켓 에러 알림 처리
+  useEffect(() => {
+    const handleSocketError = (e: any) => {
+      alert('서버 연결 오류: ' + (e.detail || '알 수 없는 오류')); // 추후 Notification 컴포넌트로 대체 가능
+    };
+    window.addEventListener('socketError', handleSocketError);
+    return () => {
+      window.removeEventListener('socketError', handleSocketError);
+    };
+  }, []);
   // ...existing code...
   function bfsShortestPath(start: Position, goalRows: number[], walls: any[]): number {
     const BOARD_SIZE = 9;
