@@ -405,6 +405,23 @@ function Game() {
     );
   };
 
+  // useEffect: 항상 호출되도록 최상단에 위치
+  useEffect(() => {
+    if (!isReady || !gameState || !playerId) return;
+    if (gameState && (gameState as any).lastMove) {
+      setLastMove((gameState as any).lastMove);
+    }
+    // 최단 경로 계산 (플레이어1: y==0, 플레이어2: y==8 도달 목표)
+    if (gameState && gameState.players && gameState.walls) {
+      const paths: {[playerId: string]: number} = {};
+      for (const p of gameState.players) {
+        const goalRows = p.id === 'player1' ? [0] : [8];
+        paths[p.id] = bfsShortestPath(p.position, goalRows, gameState.walls);
+      }
+      setShortestPaths(paths);
+    }
+  }, [isReady, gameState, playerId]);
+
   // 로딩 상태 처리
   if (!isReady) {
     return (
@@ -443,11 +460,9 @@ function Game() {
       );
   }
 
-
   const myPlayer = transformedGameState.players.find((p: Player) => p.id === playerId);
   const opponentPlayer = transformedGameState.players.find((p: Player) => p.id !== playerId);
-
-  // 최단 경로 계산 (BFS, 9x9 보드, 벽 반영)
+  // ...existing code...
   function bfsShortestPath(start: Position, goalRows: number[], walls: any[]): number {
     const BOARD_SIZE = 9;
     const queue: {pos: Position, dist: number}[] = [{pos: start, dist: 0}];
