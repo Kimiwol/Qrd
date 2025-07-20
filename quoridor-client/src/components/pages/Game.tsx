@@ -433,16 +433,16 @@ function Game() {
   }
 
 
-  // 플레이어 정보는 원본 게임 상태에서 가져오고, 화면 표시용 상태는 따로 변환
+
+  // transformedGameState 선언을 useEffect보다 위로 이동
   const transformedGameState = getGameState();
 
-  // useEffect: 항상 호출되도록 최상단에 위치
+  // 모든 useEffect를 최상단에 위치
   useEffect(() => {
     if (!isReady || !gameState || !playerId) return;
     if (gameState && (gameState as any).lastMove) {
       setLastMove((gameState as any).lastMove);
     }
-    // 최단 경로 계산 (플레이어1: y==0, 플레이어2: y==8 도달 목표)
     if (gameState && gameState.players && gameState.walls) {
       const paths: {[playerId: string]: number} = {};
       for (const p of gameState.players) {
@@ -451,10 +451,7 @@ function Game() {
       }
       setShortestPaths(paths);
     }
-  }, [isReady, gameState, playerId]);
-
-  useEffect(() => {
-    if (!isReady || !gameState || !playerId) return;
+    // transformedGameState가 null일 때 메뉴로 이동 타이머
     if (!transformedGameState) {
       const timer = setTimeout(() => {
         navigate('/menu', { replace: true });
