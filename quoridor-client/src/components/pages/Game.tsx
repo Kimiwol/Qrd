@@ -432,7 +432,47 @@ function Game() {
     );
   }
 
-  // 게임 데이터가 준비되지 않았으면 로딩 화면 표시
+
+  // 플레이어 정보는 원본 게임 상태에서 가져오고, 화면 표시용 상태는 따로 변환
+  const transformedGameState = getGameState();
+
+  // useEffect: 항상 호출되도록 최상단에 위치
+  useEffect(() => {
+    if (!isReady || !gameState || !playerId) return;
+    if (gameState && (gameState as any).lastMove) {
+      setLastMove((gameState as any).lastMove);
+    }
+    // 최단 경로 계산 (플레이어1: y==0, 플레이어2: y==8 도달 목표)
+    if (gameState && gameState.players && gameState.walls) {
+      const paths: {[playerId: string]: number} = {};
+      for (const p of gameState.players) {
+        const goalRows = p.id === 'player1' ? [0] : [8];
+        paths[p.id] = bfsShortestPath(p.position, goalRows, gameState.walls);
+      }
+      setShortestPaths(paths);
+    }
+  }, [isReady, gameState, playerId]);
+
+  useEffect(() => {
+    if (!isReady || !gameState || !playerId) return;
+    if (!transformedGameState) {
+      const timer = setTimeout(() => {
+        navigate('/menu', { replace: true });
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isReady, gameState, playerId, transformedGameState, navigate]);
+
+  // 조건부 렌더링은 Hook 호출 이후에만 실행
+  if (!isReady) {
+    return (
+      <GameOverlay>
+        <div className="loading-spinner" style={{marginBottom: '20px'}}></div>
+        게임에 접속하는 중입니다...
+      </GameOverlay>
+    );
+  }
+
   if (!isReady || !gameState || !playerId) {
     return (
       <GameContainer>
@@ -446,18 +486,6 @@ function Game() {
       </GameContainer>
     );
   }
-
-  // 플레이어 정보는 원본 게임 상태에서 가져오고, 화면 표시용 상태는 따로 변환
-  const transformedGameState = getGameState();
-
-  useEffect(() => {
-    if (!transformedGameState) {
-      const timer = setTimeout(() => {
-        navigate('/menu', { replace: true });
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [transformedGameState, navigate]);
 
   if (!transformedGameState) {
     console.error("Render crash: transformedGameState is null even when ready.");
