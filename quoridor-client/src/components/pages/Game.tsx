@@ -359,18 +359,6 @@ function Game() {
     }
   }, [isReady, gameState, playerId]);
 
-  // 로딩 상태 처리
-  if (!isReady) {
-    return (
-      <GameOverlay>
-        <div className="loading-spinner" style={{marginBottom: '20px'}}></div>
-        게임에 접속하는 중입니다...
-      </GameOverlay>
-    );
-  }
-
-
-
   // transformedGameState 선언을 useEffect보다 위로 이동
   const transformedGameState = getTransformedGameState();
 
