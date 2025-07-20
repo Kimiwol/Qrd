@@ -8,7 +8,7 @@ export interface IRoom extends mongoose.Document {
     players: string[];
     status: RoomStatus;
     maxPlayers: number;
-    gameState?: any;
+    gameState?: import('../types').GameState;
     createdAt: Date;
     updatedAt: Date;
 }

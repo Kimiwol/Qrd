@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { getGameState, bfsShortestPath } from './utils/gameUtils';
 import {
   GameContainer,
   Header,
@@ -54,8 +55,6 @@ function Game() {
   const [isReady, setIsReady] = useState(false); // 렌더링 준비 상태 추가
 
   const [winner, setWinner] = useState<string | null>(null);
-  const [isPaused, setIsPaused] = useState(false);
-  const [pauseMessage, setPauseMessage] = useState('');
   const [timeLeft, setTimeLeft] = useState(60);
   const [showTimeoutNotification, setShowTimeoutNotification] = useState(false);
   const [showContinueDialog, setShowContinueDialog] = useState(false);
@@ -95,12 +94,12 @@ function Game() {
   useEffect(() => {
     let timer: NodeJS.Timeout;
     
-    if (!isPaused && gameState?.currentTurn && !winner) {
+    if (gameState?.currentTurn && !winner) {
       timer = setInterval(() => {
         setTimeLeft(prev => {
           if (prev <= 1) {
             if (socket && gameState.currentTurn === playerId) {
-              socket.emit('turnTimeout');
+  const transformedGameState = getGameState(gameState, playerId);
             }
             return 0;
           }
@@ -112,7 +111,7 @@ function Game() {
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [isPaused, gameState?.currentTurn, winner, socket, playerId]);
+  }, [gameState?.currentTurn, winner, socket, playerId]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -189,22 +188,6 @@ function Game() {
         setWinner(winnerId);
       });
 
-      socket.on('gamePaused', (message: string) => {
-        setIsPaused(true);
-        setPauseMessage(message);
-      });
-
-      socket.on('gameResumed', () => {
-        setIsPaused(false);
-        setPauseMessage('');
-        resetTimer();
-      });
-
-      socket.on('playerDisconnected', (message: string) => {
-        console.log('🚪 플레이어 연결 해제:', message);
-        setIsPaused(true);
-        setPauseMessage(message);
-      });
 
       return () => {
         // 이벤트 리스너 정리
@@ -214,16 +197,13 @@ function Game() {
         socket.off('gameState');
         socket.off('turnTimedOut');
         socket.off('gameOver');
-        socket.off('gamePaused');
-        socket.off('gameResumed');
-        socket.off('playerDisconnected');
       };
     }
   }, [socket, navigate, resetTimer, playerId]);
 
   const handleCellClick = (position: Position) => {
     console.log(`[Game.tsx] handleCellClick received from Board:`, position);
-    if (socket && gameState?.currentTurn === playerId && !winner && !isPaused) {
+    if (socket && gameState?.currentTurn === playerId && !winner) {
       let serverPosition = position;
       // Player2인 경우, 서버의 절대 좌표계(player1 기준)로 변환
       if (playerId === 'player2') {
@@ -242,13 +222,12 @@ function Game() {
         socketExists: !!socket,
         isMyTurn: gameState?.currentTurn === playerId,
         isWinner: !!winner,
-        isPaused: isPaused,
       });
     }
   };
 
   const handleWallPlacement = (wall: Wall) => {
-    if (socket && gameState?.currentTurn === playerId && !winner && !isPaused) {
+    if (socket && gameState?.currentTurn === playerId && !winner) {
       let serverWall = wall;
       // Player2인 경우, 서버의 절대 좌표계(player1 기준)로 변환
       if (playerId === 'player2') {
@@ -286,50 +265,8 @@ function Game() {
     setShowQuitDialog(true);
   };
 
-  // 게임 상태를 플레이어 관점으로 변환 (각자 하단에서 시작하도록)
-  const getGameState = (): (GameState & { players: Player[] }) | null => {
-    if (!gameState) return null;
-
-    // 타입 오류 우회: 실제 데이터 구조에 맞게 player1, player2를 as any로 접근
-    const gs: any = gameState;
-    // 기본 시작 위치 (player1: 아래, player2: 위)
-    const defaultPositions = {
-      player1: { x: 4, y: 8 },
-      player2: { x: 4, y: 0 }
-    };
-    const players: Player[] = [
-      {
-        id: 'player1',
-        ...gs.player1,
-        position: gs.player1?.position ?? defaultPositions.player1
-      },
-      {
-        id: 'player2',
-        ...gs.player2,
-        position: gs.player2?.position ?? defaultPositions.player2
-      }
-    ];
-    const safeWalls = gs.walls ?? [];
-
-    if (playerId === 'player2') {
-      const transformedPlayers = players.map(player => ({
-        ...player,
-        position: {
-          x: 8 - player.position.x,
-          y: 8 - player.position.y
-        }
-      }));
-      const transformedWalls = safeWalls.map((wall: any) => ({
-        ...wall,
-        position: {
-          x: wall.orientation === 'horizontal' ? 7 - wall.position.x : 8 - wall.position.x,
-          y: wall.orientation === 'horizontal' ? 8 - wall.position.y : 7 - wall.position.y
-        }
-      }));
-      return { ...gs, players: transformedPlayers, walls: transformedWalls };
-    }
-    return { ...gs, players, walls: safeWalls };
-  };
+  // 게임 상태를 플레이어 관점으로 변환 (유틸 함수 사용)
+  const getTransformedGameState = () => getGameState(gameState, playerId);
 
   const renderPlayerCard = (player: Player, position: 'top' | 'bottom') => {
     if (!gameState) return null;
@@ -435,7 +372,7 @@ function Game() {
 
 
   // transformedGameState 선언을 useEffect보다 위로 이동
-  const transformedGameState = getGameState();
+  const transformedGameState = getTransformedGameState();
 
   // 모든 useEffect를 최상단에 위치
   useEffect(() => {
@@ -653,15 +590,6 @@ function Game() {
         </Dialog>
       )}
 
-      {isPaused && (
-        <GameOverlay>
-          ⏸️ 게임이 일시정지되었습니다
-          <br />
-          <div style={{ fontSize: '18px', marginTop: '10px' }}>
-            {pauseMessage}
-          </div>
-        </GameOverlay>
-      )}
     </GameContainer>
   );
 }

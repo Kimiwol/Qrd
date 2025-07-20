@@ -11,7 +11,7 @@ export class DisconnectHandler {
   }
 
   handlePlayerDisconnect(socket: Socket, findPlayerRoom: (socketId: string) => Room | undefined, endGame: (room: Room, winnerId: 'player1' | 'player2') => void, handleLeaveQueue: (socket: Socket) => void, removeFromSimpleQueue: (socketId: string) => void) {
-    const userId = (socket as any).userId;
+    const userId = (socket as import('../../types').ExtendedSocket).userId;
     console.log(`🔌 플레이어 연결 해제: ${socket.id} (유저: ${userId})`);
 
     // 큐에서 제거

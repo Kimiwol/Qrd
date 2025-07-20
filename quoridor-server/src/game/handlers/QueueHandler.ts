@@ -13,10 +13,11 @@ export class QueueHandler {
   }
 
   handleJoinRankedQueue(socket: Socket, tryMatchmaking: (mode: GameMode) => void) {
+    const extSocket = socket as import('../../types').ExtendedSocket;
     const request: MatchmakingRequest = {
-      socket,
-      userId: (socket as any).userId,
-      rating: (socket as any).rating,
+      socket: extSocket,
+      userId: extSocket.userId ?? '',
+      rating: extSocket.rating ?? 1200,
       mode: GameMode.RANKED,
     };
     console.log(`[QueueHandler] 랭크 큐 참가: ${request.userId} (Rating: ${request.rating})`);
@@ -25,10 +26,11 @@ export class QueueHandler {
   }
 
   handleJoinCustomQueue(socket: Socket, tryMatchmaking: (mode: GameMode) => void) {
+    const extSocket = socket as import('../../types').ExtendedSocket;
     const request: MatchmakingRequest = {
-      socket,
-      userId: (socket as any).userId,
-      rating: (socket as any).rating,
+      socket: extSocket,
+      userId: extSocket.userId ?? '',
+      rating: extSocket.rating ?? 1200,
       mode: GameMode.CUSTOM,
     };
     console.log(`[QueueHandler] 커스텀 큐 참가: ${request.userId}`);
@@ -37,7 +39,8 @@ export class QueueHandler {
   }
 
   handleLeaveQueue(socket: Socket) {
-    console.log(`[QueueHandler] 큐 떠나기 요청: ${(socket as any).userId}`);
+    const extSocket = socket as import('../../types').ExtendedSocket;
+    console.log(`[QueueHandler] 큐 떠나기 요청: ${extSocket.userId}`);
     
     // 매칭 시스템에서 제거
     const wasInMatchmakingQueue = this.matchmakingSystem.removePlayer(socket.id);
