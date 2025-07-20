@@ -449,16 +449,18 @@ function Game() {
 
   // 플레이어 정보는 원본 게임 상태에서 가져오고, 화면 표시용 상태는 따로 변환
   const transformedGameState = getGameState();
-  if (!transformedGameState) {
-    console.error("Render crash: transformedGameState is null even when ready.");
-    // 일정 시간 후 자동으로 메뉴로 이동
-    useEffect(() => {
+
+  useEffect(() => {
+    if (!transformedGameState) {
       const timer = setTimeout(() => {
         navigate('/menu', { replace: true });
       }, 3000);
       return () => clearTimeout(timer);
-    }, []);
+    }
+  }, [transformedGameState, navigate]);
 
+  if (!transformedGameState) {
+    console.error("Render crash: transformedGameState is null even when ready.");
     return (
       <GameContainer>
         <GameOverlay>
