@@ -1,11 +1,11 @@
-import { GameState, GameMode } from '../../types';
+import { GameMode, ServerGameState } from 'shared/types/game';
 import { Socket } from 'socket.io';
 
 export interface Room {
     id: string;
     mode: GameMode;
     players: Map<string, PlayerData>;
-    gameState: GameState;
+  gameState: ServerGameState;
     turnTimer: NodeJS.Timeout | null;
     isGameActive: boolean;
     startTime: number;

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import styled from 'styled-components';
-import { GameState, Position, Wall as WallType } from '../types';
+import { GameState, Position, Wall as WallType } from '../../../shared/types/game';
 
 interface BoardProps {
   gameState: GameState;

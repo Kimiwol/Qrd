@@ -1,6 +1,7 @@
 import { Socket, Server } from 'socket.io';
-import { GameMode, MatchmakingRequest } from '../../types';
+import { GameMode, MatchmakingRequest } from 'shared/types/game';
 import { MatchmakingSystem } from '../MatchmakingSystem';
+import { getExtendedSocket } from '../utils/socketUtils';
 
 export class QueueHandler {
   private matchmakingSystem: MatchmakingSystem;
@@ -13,7 +14,7 @@ export class QueueHandler {
   }
 
   handleJoinRankedQueue(socket: Socket, tryMatchmaking: (mode: GameMode) => void) {
-    const extSocket = socket as import('../../types').ExtendedSocket;
+    const extSocket = getExtendedSocket(socket);
     const request: MatchmakingRequest = {
       socket: extSocket,
       userId: extSocket.userId ?? '',
@@ -26,7 +27,7 @@ export class QueueHandler {
   }
 
   handleJoinCustomQueue(socket: Socket, tryMatchmaking: (mode: GameMode) => void) {
-    const extSocket = socket as import('../../types').ExtendedSocket;
+    const extSocket = getExtendedSocket(socket);
     const request: MatchmakingRequest = {
       socket: extSocket,
       userId: extSocket.userId ?? '',
@@ -39,7 +40,7 @@ export class QueueHandler {
   }
 
   handleLeaveQueue(socket: Socket) {
-    const extSocket = socket as import('../../types').ExtendedSocket;
+    const extSocket = getExtendedSocket(socket);
     console.log(`[QueueHandler] 큐 떠나기 요청: ${extSocket.userId}`);
     
     // 매칭 시스템에서 제거
@@ -68,12 +69,12 @@ export class QueueHandler {
     console.log(`간단 매칭 큐에 추가됨. 현재 대기 중: ${this.simpleQueue.length}명`);
     
     if (this.simpleQueue.length >= 2) {
-      const player1 = this.simpleQueue.shift()!;
-      const player2 = this.simpleQueue.shift()!;
+      const player1 = getExtendedSocket(this.simpleQueue.shift()!);
+      const player2 = getExtendedSocket(this.simpleQueue.shift()!);
       console.log(`매칭 성공! Player1: ${player1.id}, Player2: ${player2.id}`);
       // 실제 게임 생성 로직 호출
-      this.io.to(player1.id).emit('gameStarted', { opponent: player2.id });
-      this.io.to(player2.id).emit('gameStarted', { opponent: player1.id });
+      this.io.to(player1.id).emit('gameStarted', { opponent: player2.username || player2.id });
+      this.io.to(player2.id).emit('gameStarted', { opponent: player1.username || player1.id });
       // 실제로는 GameManager 등에서 방 생성 및 상태 관리 필요
     }
   }

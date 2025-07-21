@@ -1,7 +1,8 @@
 import { Socket, Server } from 'socket.io';
 import { GameLogic } from '../GameLogic';
-import { GameState, GameMode, Position, Wall, GameResult } from '../../types';
+import { GameMode, GameResult, ServerPosition, ServerWall, ServerGameState } from 'shared/types/game';
 import { Room } from '../interfaces/Room';
+import { getExtendedSocket, findPlayerRoom } from '../utils/socketUtils';
 
 export class GameHandler {
   private io: Server;
@@ -13,10 +14,11 @@ export class GameHandler {
     this.rooms = rooms;
   }
 
+
   createGame(player1Socket: Socket, player2Socket: Socket, mode: GameMode = GameMode.CUSTOM) {
     console.log(`🎮 createGame 함수 시작:`, {
-      player1: { userId: (player1Socket as any).userId, socketId: player1Socket.id, connected: player1Socket.connected },
-      player2: { userId: (player2Socket as any).userId, socketId: player2Socket.id, connected: player2Socket.connected },
+      player1: { userId: getExtendedSocket(player1Socket).userId, socketId: player1Socket.id, connected: player1Socket.connected },
+      player2: { userId: getExtendedSocket(player2Socket).userId, socketId: player2Socket.id, connected: player2Socket.connected },
       mode
     });
     
@@ -39,18 +41,18 @@ export class GameHandler {
     // 플레이어 설정
     room.players.set(player1Socket.id, {
       socket: player1Socket,
-      userId: (player1Socket as any).userId,
+      userId: getExtendedSocket(player1Socket).userId,
       playerId: 'player1',
-      rating: (player1Socket as any).rating,
-      username: (player1Socket as any).username
+      rating: getExtendedSocket(player1Socket).rating,
+      username: getExtendedSocket(player1Socket).username
     });
 
     room.players.set(player2Socket.id, {
       socket: player2Socket,
-      userId: (player2Socket as any).userId,
+      userId: getExtendedSocket(player2Socket).userId,
       playerId: 'player2',
-      rating: (player2Socket as any).rating,
-      username: (player2Socket as any).username
+      rating: getExtendedSocket(player2Socket).rating,
+      username: getExtendedSocket(player2Socket).username
     });
 
     console.log(`👥 플레이어 룸 설정 완료:`, {
@@ -118,8 +120,8 @@ export class GameHandler {
     console.log(`🎯 현재 활성 방 수: ${this.rooms.size}`);
   }
 
-  handlePlayerMove(socket: Socket, data: { position: Position }) {
-    const room = this.findPlayerRoom(socket.id);
+  handlePlayerMove(socket: Socket, data: { position: ServerPosition }) {
+    const room = findPlayerRoom(socket.id, this.rooms);
     if (!room || !room.isGameActive) {
       socket.emit('error', '활성화된 게임을 찾을 수 없습니다.');
       return;
@@ -163,8 +165,8 @@ export class GameHandler {
     }
   }
 
-  handleWallPlacement(socket: Socket, data: { wall: Wall }) {
-    const room = this.findPlayerRoom(socket.id);
+  handleWallPlacement(socket: Socket, data: { wall: ServerWall }) {
+    const room = findPlayerRoom(socket.id, this.rooms);
     if (!room || !room.isGameActive) {
       socket.emit('error', '활성화된 게임을 찾을 수 없습니다.');
       return;
@@ -202,7 +204,7 @@ export class GameHandler {
   }
 
   handleGameRestart(socket: Socket) {
-    const room = this.findPlayerRoom(socket.id);
+    const room = findPlayerRoom(socket.id, this.rooms);
     if (!room) {
       socket.emit('error', '방을 찾을 수 없습니다.');
       return;
@@ -219,7 +221,7 @@ export class GameHandler {
   }
 
   handleForfeit(socket: Socket) {
-    const room = this.findPlayerRoom(socket.id);
+    const room = findPlayerRoom(socket.id, this.rooms);
     if (!room || !room.isGameActive) {
       socket.emit('error', '활성화된 게임을 찾을 수 없습니다.');
       return;
@@ -238,7 +240,7 @@ export class GameHandler {
   }
 
   handleTurnTimeout(socket: Socket) {
-    const room = this.findPlayerRoom(socket.id);
+    const room = findPlayerRoom(socket.id, this.rooms);
     if (!room || !room.isGameActive) return;
 
     const playerData = room.players.get(socket.id);
@@ -251,14 +253,7 @@ export class GameHandler {
     }
   }
 
-  private findPlayerRoom(socketId: string): Room | undefined {
-    for (const room of this.rooms.values()) {
-      if (room.players.has(socketId)) {
-        return room;
-      }
-    }
-    return undefined;
-  }
+
 
   private startTurnTimer(room: Room) {
     if (room.turnTimer) {

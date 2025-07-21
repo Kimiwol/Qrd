@@ -1,5 +1,6 @@
 import { Socket, Server } from 'socket.io';
 import { Room } from '../interfaces/Room';
+import { getExtendedSocket, findPlayerRoom } from '../utils/socketUtils';
 
 export class ConnectionHandler {
   private io: Server;
@@ -10,17 +11,17 @@ export class ConnectionHandler {
     this.rooms = rooms;
   }
 
-  handleDuplicateConnection(socket: Socket, findPlayerRoom: (socketId: string) => Room | undefined, endGame: (room: Room, winnerId: 'player1' | 'player2') => void, handleLeaveQueue: (socket: Socket) => void, removeFromSimpleQueue: (socketId: string) => void) {
-    const userId = (socket as any).userId;
+  handleDuplicateConnection(socket: Socket, endGame: (room: Room, winnerId: 'player1' | 'player2') => void, handleLeaveQueue: (socket: Socket) => void, removeFromSimpleQueue: (socketId: string) => void) {
+    const userId = getExtendedSocket(socket).userId;
 
     // 동일 userId로 이미 연결된 소켓이 있는지 확인
-    const oldSocket = Array.from(this.io.sockets.sockets.values()).find(s => s !== socket && (s as any).userId === userId);
+    const oldSocket = Array.from(this.io.sockets.sockets.values()).find(s => s !== socket && getExtendedSocket(s).userId === userId);
 
     if (oldSocket) {
       console.log(`[중복 로그인] 기존 소켓(${oldSocket.id}) 처리 시작. 새 소켓: ${socket.id}`);
 
       // 1. 기존 소켓이 참여중인 게임이 있다면, 해당 게임을 기권패 처리
-      const room = findPlayerRoom(oldSocket.id);
+      const room = findPlayerRoom(oldSocket.id, this.rooms);
       if (room && room.isGameActive) {
         const disconnectedPlayerData = room.players.get(oldSocket.id);
         if (disconnectedPlayerData) {
