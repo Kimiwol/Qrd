@@ -62,7 +62,8 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     const newSocket = socket || io(wsUrl, {
       auth: { token },
       autoConnect: false, // 수동으로 connect() 호출
-      transports: ['websocket'], // WebSocket-only
+      // Allow polling fallback in addition to WebSocket for more robust connections
+      transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 3000,
