@@ -26,7 +26,8 @@ const io = new Server(httpServer, {
         credentials: true,
         allowedHeaders: ["Content-Type", "Authorization", "Origin"]
     },
-    transports: ['websocket'] // WebSocket-only
+    // Allow fallback to HTTP long-polling to reduce connection errors
+    transports: ['websocket', 'polling']
 });
 
 app.use(cors({

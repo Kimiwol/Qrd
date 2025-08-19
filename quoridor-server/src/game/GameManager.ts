@@ -68,8 +68,7 @@ export class GameManager {
 
             // 중복 연결 처리
             this.connectionHandler.handleDuplicateConnection(
-                socket, 
-                this.findPlayerRoom.bind(this), 
+                socket,
                 this.gameHandler.endGame.bind(this.gameHandler),
                 this.queueHandler.handleLeaveQueue.bind(this.queueHandler),
                 this.queueHandler.removeFromSimpleQueue.bind(this.queueHandler)
@@ -102,7 +101,6 @@ export class GameManager {
             handleDebugMatchmaking: this.handleDebugMatchmaking.bind(this),
             handlePlayerDisconnect: (socket: Socket) => this.disconnectHandler.handlePlayerDisconnect(
                 socket,
-                this.findPlayerRoom.bind(this),
                 this.gameHandler.endGame.bind(this.gameHandler),
                 this.queueHandler.handleLeaveQueue.bind(this.queueHandler),
                 this.queueHandler.removeFromSimpleQueue.bind(this.queueHandler)
@@ -273,12 +271,4 @@ export class GameManager {
         socket.emit('debugInfo', debugInfo);
     }
 
-    private findPlayerRoom(socketId: string): Room | undefined {
-        for (const room of this.rooms.values()) {
-            if (room.players.has(socketId)) {
-                return room;
-            }
-        }
-        return undefined;
-    }
 }

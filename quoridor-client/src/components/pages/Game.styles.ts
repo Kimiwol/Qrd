@@ -5,8 +5,8 @@ export const InfoSidebar = styled.div`
   width: 220px;
   min-width: 180px;
   max-width: 260px;
-  background: #ede3d1;
-  color: #2d1b12;
+  background: var(--color-light);
+  color: var(--color-panel);
   border-radius: 10px;
   box-shadow: none;
   padding: 1.2rem 1.1rem;
@@ -25,7 +25,7 @@ export const GameContainer = styled.div`
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: #2d1b12;
+  background: var(--color-bg);
   padding: 0;
   box-sizing: border-box;
   font-family: 'Noto Sans KR', 'Segoe UI', Arial, sans-serif;
@@ -39,8 +39,8 @@ export const Header = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 2.5rem 2.5rem 1.5rem 2.5rem;
-  background: #22140b;
-  border-bottom: 1px solid #3e2723;
+  background: var(--color-panel);
+  border-bottom: 1px solid #3a3a3a;
   border-radius: 0;
   margin-bottom: 0;
   position: relative;
@@ -51,7 +51,7 @@ export const Header = styled.div`
 `;
 
 export const Title = styled.h1`
-  color: #fff;
+  color: var(--color-text);
   margin: 0;
   font-size: 1.7rem;
   font-weight: 500;
@@ -65,9 +65,9 @@ export const Title = styled.h1`
 `;
 
 export const HeaderQuitButton = styled.button`
-  background: #2d1b12;
-  color: #fff;
-  border: 1px solid #4e342e;
+  background: var(--color-panel);
+  color: var(--color-text);
+  border: 1px solid #444;
   padding: 0.45rem 1.1rem;
   border-radius: 4px;
   font-size: 0.95rem;
@@ -76,8 +76,8 @@ export const HeaderQuitButton = styled.button`
   margin-left: auto;
   transition: background 0.15s;
   &:hover {
-    background: #3e2723;
-    color: #fff;
+    background: #3a3a3a;
+    color: var(--color-text);
   }
   @media (max-width: 768px) {
     padding: 6px 12px;
@@ -123,8 +123,8 @@ export const BoardArea = styled.div`
 export const PlayerCard = styled.div<{ isCurrentTurn: boolean; isPlayer1: boolean; position: 'top' | 'bottom' }>`
   display: flex;
   align-items: center;
-  background: #ede3d1;
-  color: #2d1b12;
+  background: var(--color-light);
+  color: var(--color-panel);
   border-radius: 8px;
   box-shadow: none;
   padding: 1.1rem 1.2rem;
@@ -133,7 +133,7 @@ export const PlayerCard = styled.div<{ isCurrentTurn: boolean; isPlayer1: boolea
   padding: 13px 18px;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-  border: 2px solid ${props => props.isCurrentTurn ? '#795548' : '#e0e0e0'};
+  border: 2px solid ${props => props.isCurrentTurn ? 'var(--color-accent)' : '#e0e0e0'};
   transition: border 0.2s;
   width: 100%;
   max-width: 520px;
@@ -147,7 +147,7 @@ export const PlayerAvatar = styled.div<{ isPlayer1: boolean }>`
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: ${props => props.isPlayer1 ? '#bdb76b' : '#8d5524'};
+  background: ${props => props.isPlayer1 ? 'var(--color-accent)' : 'var(--color-dark)'};
   display: flex;
   align-items: center;
   justify-content: center;
@@ -279,8 +279,8 @@ export const Notification = styled.div`
   top: 20px;
   left: 50%;
   transform: translateX(-50%);
-  background: #ff6b6b;
-  color: white;
+  background: var(--color-accent);
+  color: #fff;
   padding: 12px 24px;
   border-radius: 8px;
   font-weight: 500;
@@ -323,9 +323,9 @@ export const PlayerTimer = styled.div<{ isTimeRunningOut: boolean; isActive: boo
   font-size: 14px;
   font-weight: 600;
   padding: 4px 8px;
-  background: ${props => props.isActive ? 'rgba(76, 175, 80, 0.2)' : 'rgba(0, 0, 0, 0.1)'};
+  background: ${props => props.isActive ? 'rgba(118, 150, 86, 0.2)' : 'rgba(0, 0, 0, 0.1)'};
   border-radius: 12px;
-  border: 2px solid ${props => props.isActive ? '#4CAF50' : 'transparent'};
+  border: 2px solid ${props => props.isActive ? 'var(--color-accent)' : 'transparent'};
   animation: ${props => props.isTimeRunningOut && props.isActive ? 'pulse 1s infinite' : 'none'};
   opacity: ${props => props.isActive ? 1 : 0.5};
   transition: all 0.3s ease;
