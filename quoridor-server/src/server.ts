@@ -33,6 +33,7 @@ const io = new Server(httpServer, {
     pingInterval: 25000
 });
 
+
 app.use(cors({
     origin: config.allowedOrigins,
     credentials: true,
