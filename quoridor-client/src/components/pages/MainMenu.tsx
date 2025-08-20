@@ -447,6 +447,32 @@ const fetchCurrentRoom = useCallback(async () => {
         </section>
       )}
       <main className="menu-content">
+        <section className="quick-actions">
+          <h2>빠른 시작</h2>
+          <div className="actions-grid">
+            <button
+              className="quick-btn ranked"
+              onClick={() => startMatchmaking('ranked')}
+              disabled={loading || isMatchmaking}
+            >
+              빠른 랭크 매칭
+            </button>
+            <button
+              className="quick-btn custom"
+              onClick={() => startMatchmaking('custom')}
+              disabled={loading || isMatchmaking}
+            >
+              일반 매칭
+            </button>
+            <button
+              className="quick-btn create"
+              onClick={createRoom}
+              disabled={loading || isMatchmaking}
+            >
+              방 만들기
+            </button>
+          </div>
+        </section>
         {message && (
           <div className={`message ${message.includes('실패') || message.includes('없습니다') ? 'error' : 'success'}`}>{message}</div>
         )}
