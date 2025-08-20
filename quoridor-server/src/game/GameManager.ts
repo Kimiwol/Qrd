@@ -271,4 +271,11 @@ export class GameManager {
         socket.emit('debugInfo', debugInfo);
     }
 
+
+    public getStats() {
+        return {
+            onlineUsers: this.io.engine.clientsCount,
+            activeGames: this.rooms.size
+        };
+    }
 }
