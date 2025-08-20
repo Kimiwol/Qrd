@@ -169,13 +169,7 @@ const fetchCurrentRoom = useCallback(async () => {
       console.error('실시간 통계 조회 실패:', error);
     }
   }, [apiUrl]);
-  // 공지/이벤트, 실시간 통계 데이터 불러오기 (함수 선언 이후에 위치)
-  useEffect(() => {
-    fetchNotices();
-    fetchStats();
-  }, [fetchNotices, fetchStats]);
-
-  // 공지/이벤트, 실시간 통계 데이터 불러오기 (함수 선언 이후에 위치)
+  // 공지/이벤트, 실시간 통계 데이터 불러오기
   useEffect(() => {
     fetchNotices();
     fetchStats();
@@ -447,6 +441,32 @@ const fetchCurrentRoom = useCallback(async () => {
         </section>
       )}
       <main className="menu-content">
+        <section className="quick-actions">
+          <h2>빠른 시작</h2>
+          <div className="actions-grid">
+            <button
+              className="quick-btn ranked"
+              onClick={() => startMatchmaking('ranked')}
+              disabled={loading || isMatchmaking}
+            >
+              빠른 랭크 매칭
+            </button>
+            <button
+              className="quick-btn custom"
+              onClick={() => startMatchmaking('custom')}
+              disabled={loading || isMatchmaking}
+            >
+              일반 매칭
+            </button>
+            <button
+              className="quick-btn create"
+              onClick={createRoom}
+              disabled={loading || isMatchmaking}
+            >
+              방 만들기
+            </button>
+          </div>
+        </section>
         {message && (
           <div className={`message ${message.includes('실패') || message.includes('없습니다') ? 'error' : 'success'}`}>{message}</div>
         )}

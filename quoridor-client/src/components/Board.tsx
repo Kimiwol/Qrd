@@ -18,7 +18,7 @@ const BoardWrapper = styled.div`
   margin: auto;
   aspect-ratio: 1 / 1;
   padding: 12px;
-  background: #4e342e; /* 짙은 단색 */
+  background: var(--color-panel);
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   box-sizing: border-box;
@@ -33,7 +33,7 @@ const BoardContainer = styled.div`
   grid-template-columns: repeat(var(--board-size), 1fr);
   grid-template-rows: repeat(var(--board-size), 1fr);
   gap: var(--gap);
-  background: #4e342e; /* 보드도 단색 */
+  background: var(--color-dark);
   padding: 10px;
   position: relative;
   border-radius: 8px;
@@ -48,8 +48,8 @@ const BoardContainer = styled.div`
   }
 `;
 
-const Cell = styled.div<{ isMyTurn: boolean; isValidMove: boolean; }>`
-  background-color: ${props => props.isValidMove ? '#ffe082' : '#bdbdbd'};
+const Cell = styled.div<{ isMyTurn: boolean; isValidMove: boolean; isDark: boolean }>`
+  background-color: ${props => props.isValidMove ? '#f6f669' : (props.isDark ? 'var(--color-dark)' : 'var(--color-light)')};
   width: 100%;
   height: 100%;
   display: flex;
@@ -62,7 +62,7 @@ const Cell = styled.div<{ isMyTurn: boolean; isValidMove: boolean; }>`
   box-shadow: none;
 
   &:hover {
-    background-color: ${props => props.isMyTurn && props.isValidMove ? '#ffe082' : (props.isMyTurn ? '#f5f5f5' : '')};
+    background-color: ${props => props.isMyTurn && props.isValidMove ? '#f6f669' : (props.isMyTurn ? (props.isDark ? '#c0a07a' : '#fff') : '')};
     transform: ${props => props.isMyTurn ? 'translateY(-1px)' : 'none'};
   }
 `;
@@ -72,7 +72,7 @@ const Player = styled.div<{ color: string; isMe: boolean }>`
   height: 70%;
   border-radius: 50%;
   background-color: ${props => props.color};
-  border: 2.5px solid ${props => props.isMe ? '#ffd600' : '#bdbdbd'};
+  border: 2.5px solid ${props => props.isMe ? 'var(--color-accent)' : '#bdbdbd'};
   box-shadow: none;
   display: flex;
   justify-content: center;
@@ -119,7 +119,7 @@ const WallPlacementArea = styled.div<{ orientation: 'horizontal' | 'vertical'; i
       `}
 
   &:hover {
-    background-color: ${props => props.isMyTurn ? 'rgba(141, 110, 99, 0.5)' : 'transparent'};
+    background-color: ${props => props.isMyTurn ? 'rgba(118, 150, 86, 0.5)' : 'transparent'};
   }
 `;
 
@@ -175,6 +175,7 @@ const Board: React.FC<BoardProps> = ({ gameState, onCellClick, onWallPlace, play
         key={`${x}-${y}`}
         isMyTurn={isMyTurn}
         isValidMove={isValidMove}
+        isDark={(x + y) % 2 === 1}
         onClick={() => handleCellClick(x, y)}
       >
         {playerOnCell && (
@@ -269,8 +270,8 @@ const Board: React.FC<BoardProps> = ({ gameState, onCellClick, onWallPlace, play
         {hoveredWall && isMyTurn && (
           <Wall
             orientation={hoveredWall.orientation}
-            color="rgba(141, 110, 99, 0.7)"
-            style={{ ...getWallStyle(hoveredWall), backgroundColor: 'rgba(141, 110, 99, 0.7)' }}
+            color="rgba(118, 150, 86, 0.7)"
+            style={{ ...getWallStyle(hoveredWall), backgroundColor: 'rgba(118, 150, 86, 0.7)' }}
           />
         )}
       </BoardContainer>
