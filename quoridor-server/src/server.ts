@@ -31,7 +31,7 @@ const io = new Server(httpServer, {
     transports: ['polling', 'websocket'],
     pingTimeout: 20000,
     pingInterval: 25000
-});
+
 
 app.use(cors({
     origin: config.allowedOrigins,
