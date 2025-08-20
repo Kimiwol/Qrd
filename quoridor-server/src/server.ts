@@ -26,7 +26,11 @@ const io = new Server(httpServer, {
         credentials: true,
         allowedHeaders: ["Content-Type", "Authorization", "Origin"]
     },
-    transports: ['websocket'] // WebSocket-only
+    // Allow fallback to HTTP long-polling to reduce connection errors
+    // Start with polling so the connection succeeds even if WebSocket is blocked
+    transports: ['polling', 'websocket'],
+    pingTimeout: 20000,
+    pingInterval: 25000
 });
 
 app.use(cors({
@@ -63,6 +67,17 @@ app.use('/api', gameRoutes);
 
 // 게임 매니저 초기화
 const gameManager = new GameManager(io);
+
+// 공지 및 통계 API
+app.get('/api/notice', (_req, res) => {
+    res.json([
+        { id: '1', message: '퀘도르 온라인에 오신 것을 환영합니다!', type: 'event' }
+    ]);
+});
+
+app.get('/api/stats', (_req, res) => {
+    res.json(gameManager.getStats());
+});
 
 // 서버 시작
 const PORT = config.port;

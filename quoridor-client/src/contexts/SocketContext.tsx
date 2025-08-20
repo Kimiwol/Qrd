@@ -30,6 +30,7 @@ interface SocketProviderProps {
 export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
   const [socket, setSocket] = useState<ReturnType<typeof io> | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const connectingRef = React.useRef(false);
 
   const disconnectSocket = useCallback(() => {
     if (socket) {
@@ -50,6 +51,10 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
       console.log('🚫 소켓 연결 중단: 이미 연결됨');
       return;
     }
+    if (connectingRef.current) {
+      console.log('⏳ 소켓 연결 진행 중, 대기...');
+      return;
+    }
     console.log('�🔌 소켓 연결 시도...', {
       hasToken: !!token,
       hasSocket: !!socket,
@@ -57,18 +62,21 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
       wsUrl: process.env.REACT_APP_WS_URL || 'ws://localhost:4000'
     });
     // 기존 소켓이 있다면 재사용, 없다면 새로 생성
-    console.log('� 새 소켓 생성 중...');
+    console.log(socket ? '♻️ 기존 소켓 재사용...' : '✨ 새 소켓 생성...');
     const wsUrl = process.env.REACT_APP_WS_URL || 'wss://quoridoronline-5ngr.onrender.com';
     const newSocket = socket || io(wsUrl, {
       auth: { token },
       autoConnect: false, // 수동으로 connect() 호출
-      transports: ['websocket'], // WebSocket-only
+      // Allow polling fallback in addition to WebSocket for more robust connections
+      transports: ['polling', 'websocket'],
       reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 3000,
-      timeout: 5000
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 10000
     });
     console.log('🚀 소켓 연결 실행...');
+    connectingRef.current = true;
     if (!newSocket.connected) {
       newSocket.connect();
     }
@@ -76,11 +84,13 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     newSocket.on('connect', () => {
       console.log('✅ 소켓 연결 성공:', newSocket.id);
       setIsConnected(true);
+      connectingRef.current = false;
     });
 
     newSocket.on('disconnect', (reason: string) => {
       console.log('❌ 소켓 연결 해제:', reason);
       setIsConnected(false);
+       connectingRef.current = false;
       // io client disconnect는 의도된 연결 해제이므로 소켓 인스턴스를 유지
       if (reason !== 'io client disconnect') {
         setSocket(null);
@@ -89,6 +99,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
 
     newSocket.on('connect_error', (error: Error) => {
       console.error('❌ 소켓 연결 에러:', error.message);
+      connectingRef.current = false;
       // 인증 에러 처리
       if (error.message.includes('인증')) {
         console.log('인증 오류로 인한 연결 실패. 로그인 정보 삭제.');
@@ -101,13 +112,13 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
           const event = new CustomEvent('socketError', { detail: error.message });
           window.dispatchEvent(event);
         }
-        // 3초 후 자동 재연결 시도
-        setTimeout(() => {
-          if (!newSocket.connected) {
-            newSocket.connect();
-          }
-        }, 3000);
+        // socket.io의 내장 재연결 로직에 맡김
       }
+    });
+
+    newSocket.on('connect_timeout', () => {
+      console.error('❌ 소켓 연결 타임아웃');
+      connectingRef.current = false;
     });
 
     if (!socket) {
