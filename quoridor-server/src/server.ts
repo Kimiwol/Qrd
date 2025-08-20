@@ -27,7 +27,6 @@ const io = new Server(httpServer, {
         allowedHeaders: ["Content-Type", "Authorization", "Origin"]
     },
     // Allow fallback to HTTP long-polling to reduce connection errors
-    // Start with polling so the connection succeeds even if WebSocket is blocked
     transports: ['polling', 'websocket']
 });
 
