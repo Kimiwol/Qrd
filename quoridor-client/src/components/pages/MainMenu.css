@@ -1,20 +1,21 @@
 .main-menu {
   min-height: 100vh;
-  background: #2d1b12;
+  background: var(--color-bg);
   font-family: 'Noto Sans KR', 'Segoe UI', Arial, sans-serif;
+  color: var(--color-text);
 }
 
 .menu-header {
-  background: #22140b;
+  background: var(--color-panel);
   padding: 2.5rem 2.5rem 1.5rem 2.5rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #3e2723;
+  border-bottom: 1px solid #3a3a3a;
 }
 
 .menu-header h1 {
-  color: #fff;
+  color: var(--color-text);
   margin: 0;
   font-size: 1.7rem;
   font-weight: 500;
@@ -25,13 +26,13 @@
   display: flex;
   align-items: center;
   gap: 0.7rem;
-  color: #fff;
+  color: var(--color-text);
 }
 
 .logout-btn {
-  background: #2d1b12;
-  color: #fff;
-  border: 1px solid #4e342e;
+  background: var(--color-panel);
+  color: var(--color-text);
+  border: 1px solid #444;
   padding: 0.45rem 1.1rem;
   border-radius: 4px;
   cursor: pointer;
@@ -39,13 +40,13 @@
 }
 
 .logout-btn:hover {
-  background: #3e2723;
+  background: #3a3a3a;
   transform: none;
 }
 
 .menu-nav {
   display: flex;
-  background: #22140b;
+  background: var(--color-panel);
   padding: 0 2.5rem;
   gap: 0.5rem;
 }
@@ -53,7 +54,7 @@
 .menu-nav button {
   background: none;
   border: none;
-  color: #fff;
+  color: var(--color-text);
   padding: 0.8rem 1.2rem;
   cursor: pointer;
   transition: color 0.15s;
@@ -63,13 +64,13 @@
 }
 
 .menu-nav button:hover {
-  color: #e0b97d;
+  color: var(--color-accent);
   background: none;
 }
 
 .menu-nav button.active {
-  color: #e0b97d;
-  border-bottom-color: #e0b97d;
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
   background: none;
 }
 
@@ -77,6 +78,52 @@
   padding: 2.5rem 0 0 0;
   max-width: 900px;
   margin: 0 auto;
+}
+
+.quick-actions {
+  margin-bottom: 2rem;
+}
+
+.actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+}
+
+.quick-btn {
+  padding: 1rem 1.5rem;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.quick-btn:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.quick-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.quick-btn.ranked {
+  background: linear-gradient(135deg, #FFD700, #FFA000);
+  color: #333;
+}
+
+.quick-btn.custom {
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  color: #fff;
+}
+
+.quick-btn.create {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
 }
 
 .message {
@@ -98,9 +145,30 @@
   border: 1px solid rgba(244, 67, 54, 0.3);
 }
 
+.notice-section,
+.stats-section {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  padding: 1.5rem 2rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  max-width: 900px;
+  margin: 2rem auto 0;
+}
+
+.notice-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.notice-section li {
+  margin-bottom: 0.5rem;
+  color: #333;
+}
+
 /* 프로필 섹션 */
 .profile-section h2 {
-  color: #e0b97d;
+  color: var(--color-accent);
   font-weight: 400;
   font-size: 1.2rem;
   margin-bottom: 1.5rem;
@@ -108,25 +176,26 @@
 }
 
 .profile-card {
-  background: #ede3d1;
+  background: var(--color-light);
   border-radius: 8px;
   padding: 1.2rem 1.5rem;
-  box-shadow: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
   display: grid;
   grid-template-columns: 1fr 2fr;
   gap: 2rem;
+  color: var(--color-panel);
 }
 
 .profile-info h3 {
   margin: 0 0 1rem 0;
   font-size: 1.8rem;
-  color: #2d1b12;
+  color: var(--color-panel);
   font-weight: 500;
 }
 
 .profile-info p {
   margin: 0.5rem 0;
-  color: #4e342e;
+  color: var(--color-panel);
   font-size: 1rem;
 }
 
@@ -139,7 +208,8 @@
 .stat {
   text-align: center;
   padding: 1rem;
-  background: #e0b97d;
+  background: var(--color-accent);
+  color: #fff;
   border-radius: 6px;
   border: none;
 }
@@ -147,7 +217,7 @@
 .stat label {
   display: block;
   font-size: 0.9rem;
-  color: #6d4c41;
+  color: var(--color-light);
   margin-bottom: 0.5rem;
   font-weight: 500;
 }
@@ -156,7 +226,7 @@
   display: block;
   font-size: 1.5rem;
   font-weight: 700;
-  color: #2d1b12;
+  color: #fff;
 }
 
 .stat .rating {
