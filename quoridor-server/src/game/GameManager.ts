@@ -278,4 +278,5 @@ export class GameManager {
             activeGames: this.rooms.size
         };
     }
+
 }

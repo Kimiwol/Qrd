@@ -169,13 +169,7 @@ const fetchCurrentRoom = useCallback(async () => {
       console.error('실시간 통계 조회 실패:', error);
     }
   }, [apiUrl]);
-  // 공지/이벤트, 실시간 통계 데이터 불러오기 (함수 선언 이후에 위치)
-  useEffect(() => {
-    fetchNotices();
-    fetchStats();
-  }, [fetchNotices, fetchStats]);
-
-  // 공지/이벤트, 실시간 통계 데이터 불러오기 (함수 선언 이후에 위치)
+  // 공지/이벤트, 실시간 통계 데이터 불러오기
   useEffect(() => {
     fetchNotices();
     fetchStats();
