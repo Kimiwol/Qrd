@@ -33,6 +33,8 @@ const io = new Server(httpServer, {
     pingInterval: 25000
 });
 
+// 게임 매니저 초기화는 라우트보다 먼저 수행해 공용 API에서 통계 접근 가능하도록 함
+const gameManager = new GameManager(io);
 
 app.use(cors({
     origin: config.allowedOrigins,
@@ -62,14 +64,7 @@ app.get('/', (req, res) => {
     });
 });
 
-// 라우트 설정
-app.use('/api', authRoutes);
-app.use('/api', gameRoutes);
-
-// 게임 매니저 초기화
-const gameManager = new GameManager(io);
-
-// 공지 및 통계 API
+// 공지 및 통계 API는 다른 라우터보다 먼저 설정하여 404를 방지
 app.get('/api/notice', (_req, res) => {
     res.json([
         { id: '1', message: '퀘도르 온라인에 오신 것을 환영합니다!', type: 'event' }
@@ -79,6 +74,10 @@ app.get('/api/notice', (_req, res) => {
 app.get('/api/stats', (_req, res) => {
     res.json(gameManager.getStats());
 });
+
+// 라우트 설정
+app.use('/api', authRoutes);
+app.use('/api', gameRoutes);
 
 // 서버 시작
 const PORT = config.port;
