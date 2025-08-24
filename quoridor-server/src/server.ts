@@ -28,8 +28,11 @@ const io = new Server(httpServer, {
     },
     // Allow fallback to HTTP long-polling to reduce connection errors
     // Start with polling so the connection succeeds even if WebSocket is blocked
-    transports: ['polling', 'websocket']
+    transports: ['polling', 'websocket'],
+    pingTimeout: 20000,
+    pingInterval: 25000
 });
+
 
 app.use(cors({
     origin: config.allowedOrigins,

@@ -103,6 +103,12 @@ function Game() {
     setWinner,
   });
 
+  useEffect(() => {
+    if (!isReady && gameState && playerId && playerInfo) {
+      setIsReady(true);
+    }
+  }, [isReady, gameState, playerId, playerInfo]);
+
   // 조건부 렌더링은 Hook 이후에만 실행
   if (!isReady) {
     return (
