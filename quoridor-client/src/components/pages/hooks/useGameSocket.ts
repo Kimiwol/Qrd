@@ -43,12 +43,10 @@ export function useGameSocket({
     });
 
     socket.on('gameStarted', (data: GameStartData) => {
-      if (!playerId || !setPlayerInfo) {
-        setPlayerId(data.playerId);
-        setGameState(data.gameState);
-        setPlayerInfo(data.playerInfo);
-        resetTimer();
-      }
+      setPlayerId(data.playerId);
+      setGameState(data.gameState);
+      setPlayerInfo(data.playerInfo);
+      resetTimer();
     });
 
     socket.on('gameStateUpdate', (newGameState: GameState) => {
