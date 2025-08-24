@@ -1,9 +1,10 @@
+import { Socket } from 'socket.io';
+
 export interface ExtendedSocket extends Socket {
     userId?: string;
     rating?: number;
     username?: string;
 }
-import { Socket } from 'socket.io';
 
 export interface Position {
     row: number;
