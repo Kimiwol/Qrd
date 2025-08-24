@@ -59,11 +59,11 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
       hasToken: !!token,
       hasSocket: !!socket,
       socketConnected: socket?.connected,
-      wsUrl: process.env.REACT_APP_WS_URL || 'ws://localhost:4000'
+      wsUrl: process.env.REACT_APP_WS_URL || 'http://localhost:4000'
     });
     // 기존 소켓이 있다면 재사용, 없다면 새로 생성
     console.log(socket ? '♻️ 기존 소켓 재사용...' : '✨ 새 소켓 생성...');
-    const wsUrl = process.env.REACT_APP_WS_URL || 'wss://quoridoronline-5ngr.onrender.com';
+    const wsUrl = process.env.REACT_APP_WS_URL || 'https://quoridoronline-5ngr.onrender.com';
     const newSocket = socket || io(wsUrl, {
       auth: { token },
       autoConnect: false, // 수동으로 connect() 호출

@@ -48,8 +48,8 @@ const BoardContainer = styled.div`
   }
 `;
 
-const Cell = styled.div<{ isMyTurn: boolean; isValidMove: boolean; isDark: boolean }>`
-  background-color: ${props => props.isValidMove ? '#f6f669' : (props.isDark ? 'var(--color-dark)' : 'var(--color-light)')};
+const Cell = styled.div<{ isMyTurn: boolean; isValidMove: boolean }>`
+  background-color: ${props => props.isValidMove ? '#f6f669' : 'var(--color-light)'};
   width: 100%;
   height: 100%;
   display: flex;
@@ -62,7 +62,7 @@ const Cell = styled.div<{ isMyTurn: boolean; isValidMove: boolean; isDark: boole
   box-shadow: none;
 
   &:hover {
-    background-color: ${props => props.isMyTurn && props.isValidMove ? '#f6f669' : (props.isMyTurn ? (props.isDark ? '#c0a07a' : '#fff') : '')};
+    background-color: ${props => props.isMyTurn ? (props.isValidMove ? '#f6f669' : '#fff') : ''};
     transform: ${props => props.isMyTurn ? 'translateY(-1px)' : 'none'};
   }
 `;
@@ -92,12 +92,10 @@ const Wall = styled.div<{ orientation: 'horizontal' | 'vertical'; color: string 
       ? `
         height: var(--gap);
         width: calc(2 * var(--cell-size) + var(--gap));
-        transform: translateY(-50%);
       `
       : `
         width: var(--gap);
         height: calc(2 * var(--cell-size) + var(--gap));
-        transform: translateX(-50%);
       `}
 `;
 
@@ -110,12 +108,10 @@ const WallPlacementArea = styled.div<{ orientation: 'horizontal' | 'vertical'; i
       ? `
         height: var(--gap);
         width: calc(2 * var(--cell-size) + var(--gap));
-        transform: translateY(-50%);
       `
       : `
         width: var(--gap);
         height: calc(2 * var(--cell-size) + var(--gap));
-        transform: translateX(-50%);
       `}
 
   &:hover {
@@ -175,7 +171,6 @@ const Board: React.FC<BoardProps> = ({ gameState, onCellClick, onWallPlace, play
         key={`${x}-${y}`}
         isMyTurn={isMyTurn}
         isValidMove={isValidMove}
-        isDark={(x + y) % 2 === 1}
         onClick={() => handleCellClick(x, y)}
       >
         {playerOnCell && (
@@ -194,13 +189,13 @@ const Board: React.FC<BoardProps> = ({ gameState, onCellClick, onWallPlace, play
 
     if (wall.orientation === 'horizontal') {
       return {
-        top: `calc(${topOffset} + var(--cell-size) + var(--gap) / 2)`,
+        top: `calc(${topOffset} + var(--cell-size))`,
         left: leftOffset,
       };
-    } else { // vertical
+    } else {
       return {
         top: topOffset,
-        left: `calc(${leftOffset} + var(--cell-size) + var(--gap) / 2)`,
+        left: `calc(${leftOffset} + var(--cell-size))`,
       };
     }
   };
