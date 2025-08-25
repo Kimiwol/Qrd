@@ -71,8 +71,8 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
         autoConnect: false, // 수동으로 connect() 호출
         // 인증 토큰 전달과 함께 CORS 자격 증명 사용
         withCredentials: true,
-        // Allow polling fallback in addition to WebSocket for more robust connections
-        transports: ['polling', 'websocket'],
+        // Force pure WebSocket transport to avoid CORS issues with XHR polling
+        transports: ['websocket'],
         reconnection: true,
         reconnectionAttempts: Infinity,
         reconnectionDelay: 1000,

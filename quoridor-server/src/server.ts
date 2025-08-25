@@ -46,9 +46,8 @@ const corsOptions = {
 
 const io = new Server(httpServer, {
     cors: corsOptions,
-    // Allow fallback to HTTP long-polling to reduce connection errors
-    // Start with polling so the connection succeeds even if WebSocket is blocked
-    transports: ['polling', 'websocket'],
+    // Use only WebSocket transport to prevent XHR polling errors in some environments
+    transports: ['websocket'],
     pingTimeout: 20000,
     pingInterval: 25000
 });
