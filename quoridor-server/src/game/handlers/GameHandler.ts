@@ -120,7 +120,7 @@ export class GameHandler {
     console.log(`🎯 현재 활성 방 수: ${this.rooms.size}`);
   }
 
-  handlePlayerMove(socket: Socket, data: { position: ServerPosition }) {
+  handlePlayerMove(socket: Socket, data: { position?: ServerPosition; to?: ServerPosition }) {
     const room = findPlayerRoom(socket.id, this.rooms);
     if (!room || !room.isGameActive) {
       socket.emit('error', '활성화된 게임을 찾을 수 없습니다.');
@@ -138,14 +138,20 @@ export class GameHandler {
       return;
     }
 
+    const targetPosition = data.position || data.to;
+    if (!targetPosition) {
+      socket.emit('error', '이동할 위치가 제공되지 않았습니다.');
+      return;
+    }
+
     console.log(`🎯 플레이어 이동 시도:`, {
       player: playerData.playerId,
       from: room.gameState[playerData.playerId].position,
-      to: data.position
+      to: targetPosition
     });
 
     try {
-      const newGameState = GameLogic.makeMove(room.gameState, data.position);
+      const newGameState = GameLogic.makeMove(room.gameState, targetPosition);
       room.gameState = newGameState;
 
       this.io.to(room.id).emit('gameStateUpdate', newGameState);
