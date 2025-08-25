@@ -87,41 +87,8 @@ export class GameLogic {
         const currentPosition = gameState[currentPlayer].position;
         const opponentPosition = gameState[currentPlayer === 'player1' ? 'player2' : 'player1'].position;
 
-        // 보드 범위 체크
-        if (newPosition.row < 0 || newPosition.row > 8 || 
-            newPosition.col < 0 || newPosition.col > 8) {
-            return false;
-        }
-
-        // 상대방이 있는 위치로는 이동 불가
-        if (newPosition.row === opponentPosition.row && newPosition.col === opponentPosition.col) {
-            return false;
-        }
-
-        const dr = Math.abs(newPosition.row - currentPosition.row);
-        const dc = Math.abs(newPosition.col - currentPosition.col);
-        
-        // 기본 이동: 한 칸
-        if ((dr === 1 && dc === 0) || (dr === 0 && dc === 1)) {
-            return !this.isBlockedByWall(currentPosition, newPosition, gameState.walls);
-        }
-        
-        // 점프 이동 (상대방 뛰어넘기)
-        if ((dr === 2 && dc === 0) || (dr === 0 && dc === 2)) {
-            // 상대방이 중간에 있는지 확인
-            const middlePosition = {
-                row: (currentPosition.row + newPosition.row) / 2,
-                col: (currentPosition.col + newPosition.col) / 2
-            };
-            
-            if (middlePosition.row === opponentPosition.row && middlePosition.col === opponentPosition.col) {
-                // 중간에 벽이 없고, 목표 위치에도 벽이 없는지 확인
-                return !this.isBlockedByWall(currentPosition, opponentPosition, gameState.walls) &&
-                       !this.isBlockedByWall(opponentPosition, newPosition, gameState.walls);
-            }
-        }
-        
-        return false;
+        const validMoves = this.getValidMoves(currentPosition, gameState.walls, currentPlayer, opponentPosition);
+        return validMoves.some(pos => pos.row === newPosition.row && pos.col === newPosition.col);
     }
 
     // 이동이 유효한지 확인
@@ -152,32 +119,32 @@ export class GameLogic {
     // 벽 설치가 유효한지 확인
     static isValidWallPlacement(wall: Wall, walls: Wall[], player1Pos: Position, player2Pos: Position): boolean {
         // 벽이 보드 범위 안에 있는지 확인 (벽은 8x8 격자에 위치)
-        if (wall.position.row < 0 || wall.position.row > 7 || 
+        if (wall.position.row < 0 || wall.position.row > 7 ||
             wall.position.col < 0 || wall.position.col > 7) {
             return false;
         }
 
-        // 이미 설치된 벽과 겹치는지 확인
-        const isOverlapping = walls.some(existingWall => {
-            // 같은 위치, 같은 방향의 벽
-            if (wall.position.row === existingWall.position.row && wall.position.col === existingWall.position.col) {
-                return true;
+        // 기존 벽과의 충돌 여부 확인
+        const conflicts = walls.some(existing => {
+            const sameCell = existing.position.row === wall.position.row && existing.position.col === wall.position.col;
+            if (sameCell) {
+                return true; // 같은 위치이거나 교차하는 경우
             }
-            // 교차하는 벽 (같은 위치, 다른 방향)
-            if (wall.position.row === existingWall.position.row && wall.position.col === existingWall.position.col) {
-                return true;
+
+            if (existing.orientation === wall.orientation) {
+                if (wall.orientation === 'horizontal') {
+                    return existing.position.row === wall.position.row &&
+                           Math.abs(existing.position.col - wall.position.col) === 1;
+                } else {
+                    return existing.position.col === wall.position.col &&
+                           Math.abs(existing.position.row - wall.position.row) === 1;
+                }
             }
-            // 인접한 벽과 겹쳐서 2칸짜리 벽을 만드는 경우
-            if (wall.orientation === 'horizontal' && existingWall.orientation === 'horizontal') {
-                return wall.position.row === existingWall.position.row && Math.abs(wall.position.col - existingWall.position.col) === 1;
-            }
-            if (wall.orientation === 'vertical' && existingWall.orientation === 'vertical') {
-                return wall.position.col === existingWall.position.col && Math.abs(wall.position.row - existingWall.position.row) === 1;
-            }
+
             return false;
         });
 
-        if (isOverlapping) {
+        if (conflicts) {
             return false;
         }
 
