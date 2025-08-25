@@ -19,13 +19,33 @@ const httpServer = createServer(app);
 
 console.log('Allowed CORS origins:', config.allowedOrigins);
 
-const io = new Server(httpServer, {
-    cors: {
-        origin: config.allowedOrigins,
-        methods: ["GET", "POST"],
-        credentials: true,
-        allowedHeaders: ["Content-Type", "Authorization", "Origin"]
+// check if the request origin matches one of the allowed origins.
+// supports wildcard entries like `deploy-preview-*.netlify.app`
+const isOriginAllowed = (origin: string) => {
+    return config.allowedOrigins.some((allowed) => {
+        if (allowed.includes('*')) {
+            const pattern = new RegExp('^' + allowed.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$');
+            return pattern.test(origin);
+        }
+        return allowed === origin;
+    });
+};
+
+const corsOptions = {
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+        if (!origin || isOriginAllowed(origin)) {
+            callback(null, true);
+        } else {
+            console.log('Blocked CORS origin:', origin);
+            callback(null, false);
+        }
     },
+    credentials: true,
+    methods: ["GET", "POST"]
+};
+
+const io = new Server(httpServer, {
+    cors: corsOptions,
     // Allow fallback to HTTP long-polling to reduce connection errors
     // Start with polling so the connection succeeds even if WebSocket is blocked
     transports: ['polling', 'websocket'],
@@ -33,13 +53,11 @@ const io = new Server(httpServer, {
     pingInterval: 25000
 });
 
+// 게임 매니저 초기화는 라우트보다 먼저 수행해 공용 API에서 통계 접근 가능하도록 함
+const gameManager = new GameManager(io);
 
-app.use(cors({
-    origin: config.allowedOrigins,
-    credentials: true,
-    methods: ["GET", "POST"],
-    allowedHeaders: ["Content-Type", "Authorization", "Origin"]
-}));
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json());
 
 // 요청 로깅 미들웨어
@@ -62,14 +80,7 @@ app.get('/', (req, res) => {
     });
 });
 
-// 라우트 설정
-app.use('/api', authRoutes);
-app.use('/api', gameRoutes);
-
-// 게임 매니저 초기화
-const gameManager = new GameManager(io);
-
-// 공지 및 통계 API
+// 공지 및 통계 API는 다른 라우터보다 먼저 설정하여 404를 방지
 app.get('/api/notice', (_req, res) => {
     res.json([
         { id: '1', message: '퀘도르 온라인에 오신 것을 환영합니다!', type: 'event' }
@@ -79,6 +90,10 @@ app.get('/api/notice', (_req, res) => {
 app.get('/api/stats', (_req, res) => {
     res.json(gameManager.getStats());
 });
+
+// 라우트 설정
+app.use('/api', authRoutes);
+app.use('/api', gameRoutes);
 
 // 서버 시작
 const PORT = config.port;

@@ -59,22 +59,26 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
       hasToken: !!token,
       hasSocket: !!socket,
       socketConnected: socket?.connected,
-      wsUrl: process.env.REACT_APP_WS_URL || 'ws://localhost:4000'
+      wsUrl: process.env.REACT_APP_WS_URL || 'http://localhost:4000'
     });
     // 기존 소켓이 있다면 재사용, 없다면 새로 생성
     console.log(socket ? '♻️ 기존 소켓 재사용...' : '✨ 새 소켓 생성...');
-    const wsUrl = process.env.REACT_APP_WS_URL || 'wss://quoridoronline-5ngr.onrender.com';
-    const newSocket = socket || io(wsUrl, {
-      auth: { token },
-      autoConnect: false, // 수동으로 connect() 호출
-      // Allow polling fallback in addition to WebSocket for more robust connections
-      transports: ['polling', 'websocket'],
-      reconnection: true,
-      reconnectionAttempts: Infinity,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      timeout: 10000
-    });
+    const wsUrl = process.env.REACT_APP_WS_URL || 'https://quoridoronline-5ngr.onrender.com';
+    const newSocket =
+      socket ||
+      io(wsUrl, {
+        auth: { token },
+        autoConnect: false, // 수동으로 connect() 호출
+        // 인증 토큰 전달과 함께 CORS 자격 증명 사용
+        withCredentials: true,
+        // Allow polling fallback in addition to WebSocket for more robust connections
+        transports: ['polling', 'websocket'],
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        timeout: 10000
+      } as any);
     console.log('🚀 소켓 연결 실행...');
     connectingRef.current = true;
     if (!newSocket.connected) {
