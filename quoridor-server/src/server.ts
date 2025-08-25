@@ -19,13 +19,21 @@ const httpServer = createServer(app);
 
 console.log('Allowed CORS origins:', config.allowedOrigins);
 
-const io = new Server(httpServer, {
-    cors: {
-        origin: config.allowedOrigins,
-        methods: ["GET", "POST"],
-        credentials: true,
-        allowedHeaders: ["Content-Type", "Authorization", "Origin"]
+const corsOptions = {
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+        if (!origin || config.allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            console.log('Blocked CORS origin:', origin);
+            callback(new Error('Not allowed by CORS'));
+        }
     },
+    credentials: true,
+    methods: ["GET", "POST"]
+};
+
+const io = new Server(httpServer, {
+    cors: corsOptions,
     // Allow fallback to HTTP long-polling to reduce connection errors
     // Start with polling so the connection succeeds even if WebSocket is blocked
     transports: ['polling', 'websocket'],
@@ -36,12 +44,8 @@ const io = new Server(httpServer, {
 // 게임 매니저 초기화는 라우트보다 먼저 수행해 공용 API에서 통계 접근 가능하도록 함
 const gameManager = new GameManager(io);
 
-app.use(cors({
-    origin: config.allowedOrigins,
-    credentials: true,
-    methods: ["GET", "POST"],
-    allowedHeaders: ["Content-Type", "Authorization", "Origin"]
-}));
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json());
 
 // 요청 로깅 미들웨어
