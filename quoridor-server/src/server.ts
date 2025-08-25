@@ -19,13 +19,25 @@ const httpServer = createServer(app);
 
 console.log('Allowed CORS origins:', config.allowedOrigins);
 
+// check if the request origin matches one of the allowed origins.
+// supports wildcard entries like `deploy-preview-*.netlify.app`
+const isOriginAllowed = (origin: string) => {
+    return config.allowedOrigins.some((allowed) => {
+        if (allowed.includes('*')) {
+            const pattern = new RegExp('^' + allowed.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$');
+            return pattern.test(origin);
+        }
+        return allowed === origin;
+    });
+};
+
 const corsOptions = {
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-        if (!origin || config.allowedOrigins.includes(origin)) {
+        if (!origin || isOriginAllowed(origin)) {
             callback(null, true);
         } else {
             console.log('Blocked CORS origin:', origin);
-            callback(new Error('Not allowed by CORS'));
+            callback(null, false);
         }
     },
     credentials: true,
